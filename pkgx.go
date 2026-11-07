@@ -50,8 +50,21 @@ import (
 // Renaming a URL did not move what it addresses. The bottles move by COPY,
 // and this line follows them — not the other way round. Until that copy has
 // run and been verified, this is where they are.
+// DefaultDistBase is the same value as DistBase's initial one, as a CONSTANT.
+//
+// ⛔ DistBase IS A VAR THAT TESTS REASSIGN, so it cannot be used to check what
+// the documentation claims the default is: the first version of
+// readmedefault_test.go compared the README against DistBase, passed under
+// `-run`, and failed in the full suite with
+//
+//	the README does not name the real default "http://127.0.0.1:55863"
+//
+// — another test had pointed it at an httptest server first. A gate that
+// reads mutable global state tests the order the suite happened to run in.
+const DefaultDistBase = "oci://ghcr.io/go-pkgx/packages"
+
 var (
-	DistBase   = "oci://ghcr.io/go-pkgx/packages"
+	DistBase   = DefaultDistBase
 	PantryBase = "https://raw.githubusercontent.com/pkgxdev/pantry/main/projects"
 
 	// PantryOverlay is MERGED OVER PantryBase for a project's package.yml: a

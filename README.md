@@ -4,13 +4,13 @@
 ![Go](https://img.shields.io/badge/Go-1.27%2B-00ADD8?logo=go&logoColor=white)
 ![License](https://img.shields.io/badge/license-BSD--3--Clause-blue)
 
-The pure-Go **pkgx bottle client** — the shared backend of the pure-Go pkgx
-family. It resolves a package's dependency closure from the pkgx pantry,
-downloads the bottles from the configured `ZPKG_DIST` (default: the signed
-`oci://ghcr.io/go-zpkg/packages` registry; set `https://dist.pkgx.dev` for the
-full unsigned upstream pantry), completes the implicit libc/gcc closure a
-`FROM scratch` image needs, and execs through the pkgx glibc loader.
-`CGO_ENABLED=0`, no runtime dependencies of its own.
+The pure-Go **bottle client** — the shared backend of the `zpkgx` family. It
+resolves a package's dependency closure, downloads the bottles from the
+configured `ZPKG_DIST` (default: `oci://ghcr.io/go-pkgx/packages`, the signed
+registry the published bottles are actually in — see `DistBase` in `pkgx.go`),
+completes the implicit libc/gcc closure a `FROM scratch` image needs, and
+execs through the glibc bottle's own loader. `CGO_ENABLED=0`, no runtime
+dependencies of its own.
 
 Consumed by:
 
