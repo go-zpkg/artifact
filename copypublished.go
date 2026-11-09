@@ -23,13 +23,28 @@ var ErrSameNamespace = errors.New("bottle: source and destination are the same n
 // preserving digests, together with everything that hangs off it: the cosign
 // signature manifests and the SBOM / provenance / VEX attestations.
 //
-// ⛔⛔ THIS EXISTS BECAUSE A REGISTRY NAMESPACE CANNOT BE RENAMED. GitHub's
-// container packages are org-scoped and do not follow a repository transfer:
-// when every repository moved from go-pkgx to go-zpkg, every bottle stayed.
-// DistBase was rewritten to match and v0.64.0 through v0.68.0 shipped a fleet
-// pointing at an empty registry (see TestTheDefaultRegistryHoldsBottles, which
-// is the gate that came out of it). The bottles have to be PUT in the new
-// namespace before anything may name it, and putting them there is this.
+// ⛔⛔ IT IS NOT HOW A REGISTRY NAMESPACE IS MOVED, AND IT WAS WRITTEN
+// BELIEVING IT WAS. The premise holds as far as it goes: GitHub's container
+// packages are org-scoped and do not follow a repository transfer — when every
+// repository moved from go-pkgx to go-zpkg, every bottle stayed, DistBase was
+// rewritten to match, and v0.64.0 through v0.68.0 shipped a fleet pointing at
+// an empty registry (TestTheDefaultRegistryHoldsBottles is the gate that came
+// out of it). So the new namespace must be POPULATED.
+//
+// It is populated by BUILDING CORRECT RECIPES INTO IT, not by moving these
+// bottles. They were built from pkgxdev/pantry's recipes, which
+// go-zpkg/packages#431 establishes can be neither read nor copied — 2453
+// upstream files, no LICENSE and no COPYING — and whose item 1 already
+// concluded "the sovereign pantry is WRITTEN, not converted". The bottles also
+// carry no build identity (packages/.github/workflows/wasip1.yml:201: "Nothing
+// in go-pkgx carries a build identity — it predates them"), so the sentence
+// this function was justified with, "a rebuild changes bottles that are
+// already attested", was false about the thing it protected.
+// go-zpkg/packages#440 carries the corrected order.
+//
+// What is left is the case where republishing verbatim is the POINT: a mirror
+// (go-zpkg/mirror; `zbk mirroraudit` opens with "A mirrored bottle is
+// republished verbatim"). This has no caller in the migration.
 //
 // ⛔ EXTENDED copy, not Copy, and the difference is the whole point. oras.Copy
 // walks a manifest and its blobs — it would move the bottle and leave its
