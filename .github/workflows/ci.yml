@@ -124,8 +124,11 @@ jobs:
       - uses: actions/setup-go@v7
         with:
           go-version: '1.27.3'
-      # A CGO_ENABLED=0 build must be fully static on every 64-bit target,
-      # so pkgm can ship on a `FROM scratch` image for each arch.
+      # A CGO_ENABLED=0 build must be fully static on every 64-bit target, so
+      # that the binaries importing this library -- zpkgx, zpkgm, zbk, mirror
+      # -- can ship on a `FROM scratch` image for each arch. This package
+      # builds no binary of its own; the constraint is inherited by everything
+      # that links it.
       - env:
           CGO_ENABLED: "0"
           GOOS: ${{ matrix.goos }}

@@ -30,14 +30,14 @@ so both tools share one source of truth for the bottle protocol.
   DNS.
 - **Nothing outside the store.** A blob is staged inside `$ZPKG_DIR`, not in
   the system temp directory: `FROM scratch` has no `/tmp`, and until this was
-  measured by building that image and running it, `pkgx catalog update` failed
+  measured by building that image and running it, `zpkgs catalog update` failed
   on the one image this package exists to serve.
 
 ## What `Extract` refuses
 
 `Extract` is the one tar extractor in this ecosystem, and it is pointed at
 archives nobody here produced: bottles from a registry, and — through
-`bk/fetch` — **source tarballs from 233 distinct upstream hosts**, unpacked as
+`zbk/fetch` — **source tarballs from 233 distinct upstream hosts**, unpacked as
 root inside a chroot in the sovereign build. So what it refuses is part of its API,
 not an implementation detail.
 
@@ -90,9 +90,9 @@ trust set and fails closed. Not "every install": every pull.
 
 That distinction is the whole of it, and it has been got wrong twice. The
 first time, the check lived in `DownloadBottle`, which only the mirror
-tooling calls, so `pkgx` and `pkgm` installed unsigned bottles while
+tooling calls, so `zpkgx` and `zpkgm` installed unsigned bottles while
 advertising otherwise. The second time was the **catalogue** — the list of
-project names `pkgx ls` and `<TAB>` read — which was fetched past the check
+project names `zpkgs ls` and `<TAB>` read — which was fetched past the check
 because it is "only a list of names".
 
 A list of names is what a person then types. Forging it does not get an
@@ -350,7 +350,7 @@ The rule is that the part **before** the underscore must be dotted. Every
 version this registry carries is; a date-like one is not. `_beta` is not a
 rebuild either: what follows must be all digits. And it splits at the **last**
 underscore, so in `1.0_2_3` the version is `1.0_2` and the rebuild is 3 —
-bk appends `_N` to a version it already resolved.
+zbk appends `_N` to a version it already resolved.
 
 ## An end-of-life line is ranked last, never removed
 
@@ -368,7 +368,7 @@ A binary may also carry a default, `DefaultDeprecated`, set before the first
 resolution — because an opt-in variable fixes nothing: with the variable as
 the only source, this feature changed no answer for anybody, and openssl's
 3.6 line went end-of-life with `^3` still resolving to 3.6.4 everywhere.
-`pkgx` sets it from an embedded, dated list.
+`zpkgx` sets it from an embedded, dated list.
 
 The precedence is deliberate, and the surprising direction is the one to
 avoid:
@@ -386,13 +386,13 @@ that looks like it worked.
 
 ## The lock format lives here
 
-`bk lock` wrote locks and nothing could read one back, because the reader
-was in bk's `package main` — importable by nothing. A format with exactly
+`zbk lock` wrote locks and nothing could read one back, because the reader
+was in zbk's `package main` — importable by nothing. A format with exactly
 one program able to read it has not left the program it was written for,
 and the whole point of a lock is that something **else** acts on it later.
 
 So the format is here — `Lock`, `LockPin`, `RenderLock`, `ParseLock`,
-`ReadLock`, `LockAge` — and the **resolution** stays in bk, which is the
+`ReadLock`, `LockAge` — and the **resolution** stays in zbk, which is the
 real seam: deciding what a set means today needs a pantry, an overrides set
 and a version resolver; reading a file that records the answer needs none
 of them. Writing moved with reading, because a format whose two ends live
@@ -430,7 +430,7 @@ real daemons (go-authn's authnd, authn-bridge and authn-revokd), nothing more.
 **Readers before this version are not broken by it**, which was measured
 rather than assumed: the recipe reader is a generic one, so the block is one
 more key every consumer ignores — `FetchMeta` returns the same dependencies
-and provides with it as without it, and `bk lint` passes. That reader drops
+and provides with it as without it, and `zbk lint` passes. That reader drops
 the block's **label**, though, so two `service` blocks are a duplicate key to
 it and the whole recipe becomes unreadable for every older client. Hence one
 service per recipe, refused here as well.
@@ -459,7 +459,7 @@ one of them comes to be forgotten — which is what happened:
 `*NotPublishedError` alone covers the *rare* half. Measured against the
 published `darwin/aarch64` catalogue on 2026-10-23, **567 of 1940 projects**
 had a recipe and no bottle, and for the length of one release
-`pkgx`'s "you can ask for this" hint could not see any of them.
+`zpkgx`'s "you can ask for this" hint could not see any of them.
 
 ⛔ The prose predicate that preceded them is still here as
 `IsNotPublished`'s last resort, and it is **too wide once it leaves this
@@ -482,7 +482,7 @@ machine can audit all of them:
 closure, err := bottle.CompleteClosureFor(roots, dir, "linux", "x86-64")
 ```
 
-⛔ **Why it had to exist.** `bk unresolved` reports every reference an
+⛔ **Why it had to exist.** `zbk unresolved` reports every reference an
 installed closure cannot answer; wired into CI it found **967
 unresolvable references over 259 of 1407 bottled projects** on
 linux/x86-64. The other five platforms had never been asked, because this
