@@ -14,8 +14,8 @@ dependencies of its own.
 
 Consumed by:
 
-- [go-zpkg/pkgm](https://github.com/go-zpkg/zpkgm) — the *installer*
-- [go-zpkg/pkgx](https://github.com/go-zpkg/zpkgx) — the *runtime*
+- [go-zpkg/zpkgm](https://github.com/go-zpkg/zpkgm) — the *installer*
+- [go-zpkg/zpkgx](https://github.com/go-zpkg/zpkgx) — the *runtime*
 
 so both tools share one source of truth for the bottle protocol.
 
@@ -119,7 +119,7 @@ of keys and a *threshold* of them) with Nix's spelling for the list.
 | `ZPKG_TRUST_THRESHOLD` | how many *distinct* trusted keys must have signed (default `1`) |
 
 ```
-ZPKG_EXTRA_TRUSTED_KEYS='alice:RWQ…' ZPKG_TRUST_THRESHOLD=2 pkgx +fftw.org
+ZPKG_EXTRA_TRUSTED_KEYS='alice:RWQ…' ZPKG_TRUST_THRESHOLD=2 zpkgx +fftw.org
 ```
 
 Two people building the same inputs get the **same** hash — deliberately, and
