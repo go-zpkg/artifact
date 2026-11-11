@@ -58,7 +58,7 @@ type Lock struct {
 	Version   int    // lockfile_version
 	Platform  string // the platform it was taken on: it CHANGES the answer
 	Generated string // RFC3339, UTC
-	BK        string // which bk wrote it
+	ZBK       string // which zbk wrote it
 	Roots     []string
 	Pantry    string
 	Overlay   string
@@ -105,7 +105,7 @@ func LockPinned(d Lock) string {
 // reads by hand is HCL and HCLToMap reads it straight back.
 func RenderLock(d Lock) string {
 	var b strings.Builder
-	b.WriteString("# bk lock\n#\n" +
+	b.WriteString("# zbk lock\n#\n" +
 		"# `spec` is a Merkle hash over the platform, the name, the resolved\n" +
 		"# version, the PARSED recipe (so reformatting does not move it) and the\n" +
 		"# spec hashes of the dependencies — Spack's shape, whose packaging guide\n" +
@@ -117,17 +117,17 @@ func RenderLock(d Lock) string {
 		"# different promise and is not made here.\n#\n" +
 		"# Sorted by project, not in build order: a lock is read as a diff, and a\n" +
 		"# topological order makes every line move when one dependency does.\n#\n" +
-		"# `bk lock --check <this file>` re-resolves and says what moved.\n" +
-		"# `bk factory --lock <this file>` BUILDS these versions.\n#\n" +
-		"# `pkgx --lock <this file>` RUNS them — but only if every pin is\n" +
+		"# `zbk lock --check <this file>` re-resolves and says what moved.\n" +
+		"# `zbk factory --lock <this file>` BUILDS these versions.\n#\n" +
+		"# `zpkgx --lock <this file>` RUNS them — but only if every pin is\n" +
 		"# PUBLISHED for this platform. A lock pins what the RECIPES can build,\n" +
 		"# which runs ahead of what the factory has published: measured\n" +
 		"# 2026-10-08, a fresh lock of curl.se for linux/aarch64 had 2 of its 5\n" +
-		"# pins ahead of the published bottles, and `pkgx --lock` refused it.\n" +
-		"# `bk lock` says at write time which pins are not installable, and\n" +
-		"# `bk lock -runnable` pins what is published instead.\n\n")
+		"# pins ahead of the published bottles, and `zpkgx --lock` refused it.\n" +
+		"# `zbk lock` says at write time which pins are not installable, and\n" +
+		"# `zbk lock -runnable` pins what is published instead.\n\n")
 	fmt.Fprintf(&b, "lockfile_version = %d\n", d.Version)
-	fmt.Fprintf(&b, "bk               = %q\n", d.BK)
+	fmt.Fprintf(&b, "zbk              = %q\n", d.ZBK)
 	fmt.Fprintf(&b, "platform         = %q\n", d.Platform)
 	fmt.Fprintf(&b, "generated        = %q\n", d.Generated)
 	fmt.Fprintf(&b, "pantry           = %q\n", d.Pantry)
@@ -175,10 +175,22 @@ func ParseLock(src []byte, path string) (Lock, error) {
 		Version:   int(lockInt(m["lockfile_version"])),
 		Platform:  lockString(m["platform"]),
 		Generated: lockString(m["generated"]),
-		BK:        lockString(m["bk"]),
-		Pantry:    lockString(m["pantry"]),
-		Overlay:   lockString(m["overlay"]),
-		Pinned:    lockString(m["pinned"]),
+		// ⛔ `zbk`, AND THE RETIRED `bk` KEY IS NOT READ AS A FALLBACK.
+		// Reading it would be an alias for a spelling the rename removed. A
+		// lock written before the rename therefore comes back with an empty
+		// ZBK — which is survivable, because this field is informational:
+		// nothing in this package or its callers reads it back except the
+		// round-trip test. Every field that DECIDES anything is unchanged.
+		//
+		// lockfile_version is deliberately NOT bumped, by the same argument
+		// the `pinned` key used below: an old reader that does not know this
+		// key still reads the versions correctly, which is the bar the number
+		// exists for. Bumping would make every binary built before today
+		// refuse every lock written after it, over a field that names a tool.
+		ZBK:     lockString(m["zbk"]),
+		Pantry:  lockString(m["pantry"]),
+		Overlay: lockString(m["overlay"]),
+		Pinned:  lockString(m["pinned"]),
 	}
 	// A mode this build does not know is not a mode it may GUESS at: it
 	// would re-resolve by the wrong question and report what moved against

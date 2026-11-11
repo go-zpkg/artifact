@@ -1,6 +1,7 @@
 package bottle
 
 import (
+	"regexp"
 	"strings"
 	"testing"
 )
@@ -33,12 +34,29 @@ func TestTheLockHeaderNamesCommandsThatExist(t *testing.T) {
 	// And it still points at the three that do, because a lock whose
 	// header says nothing about how to use it is a file people delete.
 	for _, right := range []string{
-		"bk lock --check",
-		"pkgx --lock",
-		"bk factory --lock",
+		"zbk lock --check",
+		"zpkgx --lock",
+		"zbk factory --lock",
 	} {
 		if !strings.Contains(out, right) {
 			t.Errorf("the header no longer mentions %q", right)
+		}
+	}
+
+	// ⛔⛔ AND IT MUST NOT NAME THE RETIRED COMMANDS, which the check above
+	// CANNOT SEE: `strings.Contains(out, "bk lock --check")` is satisfied by
+	// "zbk lock --check", because the new name contains the old one. This test
+	// passed unchanged when the header still said `bk lock` and when it was
+	// corrected to `zbk lock` — it could not tell the two apart, so it was
+	// policing nothing.
+	//
+	// A left word boundary is what distinguishes them, the same rule the
+	// rename sweep needed. Every lock this package writes carries this header
+	// to a user, so a retired command here is advice that does not run.
+	for _, retired := range []string{`bk`, `pkgx`, `pkgm`} {
+		re := regexp.MustCompile(`(^|[^A-Za-z0-9_])` + retired + `[ \x60]`)
+		if m := re.FindString(out); m != "" {
+			t.Errorf("the header names the retired command %q (matched %q)", retired, m)
 		}
 	}
 
