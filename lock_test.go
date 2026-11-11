@@ -14,7 +14,7 @@ func sampleLock() Lock {
 		Version:   LockfileVersion,
 		Platform:  "linux/x86-64",
 		Generated: "2026-10-06T09:00:00Z",
-		BK:        "v0.12.0",
+		ZBK:       "v0.12.0",
 		Roots:     []string{"curl.se", "gnu.org/bash"},
 		Pantry:    "2df061bd",
 		Overlay:   "a1b2c3d4",
@@ -40,7 +40,7 @@ func TestALockRoundTrips(t *testing.T) {
 		t.Fatalf("ReadLock: %v", err)
 	}
 	if got.Version != want.Version || got.Platform != want.Platform ||
-		got.Generated != want.Generated || got.BK != want.BK ||
+		got.Generated != want.Generated || got.ZBK != want.ZBK ||
 		got.Pantry != want.Pantry || got.Overlay != want.Overlay {
 		t.Errorf("header lost fields:\n got %+v\nwant %+v", got, want)
 	}
