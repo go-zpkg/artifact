@@ -15,7 +15,7 @@ import (
 //
 // Measured before writing it: the convention `<dir>/<project>/v<version>` was
 // spelled out at NINE call sites — install.go:131, 240, 241, 271, 357,
-// closure.go:278, 532, pkgx.go:2057, 2155 — and read back at none. Two bottles
+// closure.go:278, 532, zpkg.go:2057, 2155 — and read back at none. Two bottles
 // that differ only in their build options resolve to the same directory, so
 // installing the second one meets the first and the installer refuses:
 //
