@@ -587,7 +587,7 @@ func UnmarshalCatalog(b []byte) (Catalog, error) {
 //	ghcr.io/go-pkgx/packages/go-zpkg.github.io/catalog    ABSENT
 //	ghcr.io/go-pkgx/packages/go-pkgx.dev/catalog (as .github.io) ABSENT
 //
-// It is the SECOND constant this happened to — see DistBase in pkgx.go, where
+// It is the SECOND constant this happened to — see DistBase in zpkg.go, where
 // the same pass pointed the whole fleet at an empty registry. The rule both
 // of them earned: a constant that addresses something published follows the
 // artefact, and moves only after a copy has run and been verified.

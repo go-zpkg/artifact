@@ -547,7 +547,7 @@ func TestFetchOrNewIndexNonIndexAndBadJSON(t *testing.T) {
 	}
 }
 
-// --- pkgx.go: OCI client wiring + satisfies + version listing ---------------
+// --- zpkg.go: OCI client wiring + satisfies + version listing ---------------
 
 func withDist(t *testing.T, dist string) {
 	t.Helper()
@@ -722,7 +722,7 @@ func TestATwoComponentVersionProducesOneHashedEntry(t *testing.T) {
 	}
 }
 
-// --- install.go / pkgx.go: Install over OCI + failure paths -----------------
+// --- install.go / zpkg.go: Install over OCI + failure paths -----------------
 
 func ociGzBottle(t *testing.T, project, ver string, files map[string]string) []byte {
 	t.Helper()
@@ -883,7 +883,7 @@ func TestFetchBottleHTTPGetError(t *testing.T) {
 	}
 }
 
-// --- pkgx.go: untar error branches ------------------------------------------
+// --- zpkg.go: untar error branches ------------------------------------------
 
 func tarBytes(t *testing.T, build func(tw *tar.Writer)) []byte {
 	t.Helper()

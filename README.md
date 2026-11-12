@@ -7,7 +7,7 @@
 The pure-Go **bottle client** — the shared backend of the `zpkgx` family. It
 resolves a package's dependency closure, downloads the bottles from the
 configured `ZPKG_DIST` (default: `oci://ghcr.io/go-pkgx/packages`, the signed
-registry the published bottles are actually in — see `DistBase` in `pkgx.go`),
+registry the published bottles are actually in — see `DistBase` in `zpkg.go`),
 completes the implicit libc/gcc closure a `FROM scratch` image needs, and
 execs through the glibc bottle's own loader. `CGO_ENABLED=0`, no runtime
 dependencies of its own.
