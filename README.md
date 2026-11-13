@@ -318,24 +318,24 @@ rebuild and every published build stays pinnable. Two *spellings* of one build
 still collapse — `3.3.11_1` and `v3.3.11_1` are one bottle — which is what the
 key is for.
 
-### ⛔ Upstream pkgx cannot read a `_N` tag, and that is a deliberate trade
+### ⛔ pkgx cannot read a `_N` tag, and that is a deliberate trade
 
-`_N` follows Homebrew's `rebuild` and Debian's `+bN`, and **upstream
-pkgx/libpkgx cannot parse it at all**. Its `SemVer` constructor
+`_N` follows Homebrew's `rebuild` and Debian's `+bN`, and **pkgx/libpkgx
+cannot parse it at all**. Its `SemVer` constructor
 (`src/utils/semver.ts:26-41`, read 2026-11-02) splits on `.` and accepts a
 part only if it matches `/^(\d+)([a-z])$/` — last part only — or `/^\d+$/`,
 and otherwise throws `invalid version`. For `3.3.11_1` the parts are `3`, `3`,
 `11_1`; the third matches neither.
 
-So **pointing an upstream pkgx client at this registry is not a supported
+So **pointing a pkgx client at this registry is not a supported
 configuration** once a project carries a rebuild. It throws rather than
 resolving the wrong bottle, which is the better of the two failures, but it is
 a failure.
 
 The alternatives were weighed and rejected: a fourth numeric component
-(`3.3.11.1`) parses upstream but cannot be told apart from a genuine
+(`3.3.11.1`) parses in pkgx but cannot be told apart from a genuine
 four-component release such as ghc `5.64.3.2`; a letter suffix (`3.3.11a`)
-parses upstream but caps at 26 and occupies the slot real versions use, as
+parses in pkgx but caps at 26 and occupies the slot real versions use, as
 openssl's `1.1.1w` does. Build metadata (`+neon`) is not an option at all —
 the OCI distribution spec requires a tag to match
 `[a-zA-Z0-9_][a-zA-Z0-9._-]{0,127}`, which excludes `+`.
@@ -527,7 +527,7 @@ was installed, and the evidence was a directory outside the store. `Resolved`
 is an exported struct with exported fields, so a caller can fill it without
 passing through a resolver or a catalogue; the order of two unrelated checks
 inside one function is not a boundary. Measured before adding it: the
-upstream pantry's 1929 recipes carry 6381 dependency keys and every one
+pantry's 1929 recipes carry 6381 dependency keys and every one
 passes, so it rejects nothing that exists.
 
 ## Where it is proven to work
