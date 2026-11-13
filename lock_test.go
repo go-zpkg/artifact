@@ -14,7 +14,7 @@ func sampleLock() Lock {
 		Version:   LockfileVersion,
 		Platform:  "linux/x86-64",
 		Generated: "2026-10-06T09:00:00Z",
-		ZBK:       "v0.12.0",
+		ZPKB:       "v0.12.0",
 		Roots:     []string{"curl.se", "gnu.org/bash"},
 		Pantry:    "2df061bd",
 		Overlay:   "a1b2c3d4",
@@ -23,6 +23,42 @@ func sampleLock() Lock {
 			{"gnu.org/bash", "5.3.0", "sha256:bbb"},
 			{"zlib.net", "1.3.2", "sha256:ccc"},
 		},
+	}
+}
+
+// ⛔⛔ A LOCK FROM EVERY ERA STILL SAYS WHAT WROTE IT, ONE CASE PER SPELLING.
+// This key has been `bk`, then `zbk`, now `zpkb`. The previous decision was to
+// read only the current one, which made every lock from a previous era come
+// back as though nothing had written it — and no test noticed, because the
+// round trip only ever writes and reads the CURRENT spelling, so it is green
+// by construction whatever the reader does with the older ones.
+//
+// The literals are deliberate: a constant here could be renamed in sympathy
+// with lockWriterKeys during a tidy-up, and then this would assert nothing.
+func TestALockFromAnyEraNamesItsWriter(t *testing.T) {
+	for _, c := range []struct{ key, era string }{
+		{"zpkb", "current"},
+		{"zbk", "retired by zbk -> zpkb"},
+		{"bk", "retired at the brewkit break"},
+	} {
+		// A `locked` block is required: ReadLock refuses a file without one
+		// rather than returning an empty lock, which is the right refusal and
+		// which my first fixture tripped over.
+		body := "lockfile_version = 1\n" + c.key + " = \"v9.9.9\"\n" +
+			"platform = \"linux/x86-64\"\ngenerated = \"2026-10-06T09:00:00Z\"\n" +
+			"\nlocked = {\n  \"zlib.net\" = { version = \"1.3.2\", spec = \"sha256:ccc\" }\n}\n"
+		p := filepath.Join(t.TempDir(), "x.lock.hcl")
+		if err := os.WriteFile(p, []byte(body), 0o644); err != nil {
+			t.Fatal(err)
+		}
+		got, err := ReadLock(p)
+		if err != nil {
+			t.Fatalf("%s: ReadLock: %v", c.key, err)
+		}
+		if got.ZPKB != "v9.9.9" {
+			t.Errorf("a lock whose writer key is %q (%s) came back with ZPKB=%q: "+
+				"the field exists to say what wrote the lock", c.key, c.era, got.ZPKB)
+		}
 	}
 }
 
@@ -40,7 +76,7 @@ func TestALockRoundTrips(t *testing.T) {
 		t.Fatalf("ReadLock: %v", err)
 	}
 	if got.Version != want.Version || got.Platform != want.Platform ||
-		got.Generated != want.Generated || got.ZBK != want.ZBK ||
+		got.Generated != want.Generated || got.ZPKB != want.ZPKB ||
 		got.Pantry != want.Pantry || got.Overlay != want.Overlay {
 		t.Errorf("header lost fields:\n got %+v\nwant %+v", got, want)
 	}
