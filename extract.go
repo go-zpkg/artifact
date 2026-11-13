@@ -42,9 +42,9 @@ var (
 
 // Extract unpacks every entry of tr into dest, stripping strip leading path
 // components from each entry name (strip == 0 keeps the archive layout). It is
-// the shared archive extractor for the pkgx ecosystem — both artifact's artifact
-// installer and bk's source fetcher route through it, so a single implementation
-// carries the invariants both rely on:
+// the shared archive extractor for this ecosystem — both this package's
+// installer and zpkb's source fetcher route through it, so a single
+// implementation carries the invariants both rely on:
 //
 //   - Regular files keep the modification time the archive recorded (tar(1)
 //     semantics). Recipes DEPEND on this: a release tarball ships generated

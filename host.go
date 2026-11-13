@@ -1,10 +1,17 @@
-// Package artifact is the reusable pkgx "artifact backend": it resolves a package's
-// runtime dependency closure from the pkgx pantry, downloads the artifacts from
-// the configured ZPKG_DIST (default: the signed oci://ghcr.io/go-zpkg/packages
-// registry; ZPKG_DIST=https://dist.pkgx.dev for the unsigned upstream), and
-// installs them — with no runtime dependencies of its own (pure Go,
-// CGO_ENABLED=0, runnable on a `FROM scratch` image). It is imported by the
-// pkgm CLI and by sibling tools so there is one source of truth.
+// Package artifact is the reusable package-artifact backend: it resolves a
+// project's runtime dependency closure from the pantry, downloads the
+// artifacts from the configured ZPKG_DIST and installs them — with no runtime
+// dependencies of its own (pure Go, CGO_ENABLED=0, runnable on a `FROM
+// scratch` image). It is imported by zpkgm, zpkgx and zpkb so there is one
+// source of truth.
+//
+// ⛔ THE DEFAULT REGISTRY IS STILL oci://ghcr.io/go-pkgx/packages, and this
+// sentence has been wrong before. DefaultDistBase (zpkg.go:64) is the
+// authority; readmedefault_test.go asserts the README agrees with it, and
+// asserts specifically that it does NOT say go-zpkg/packages — because a
+// rename pass once rewrote the prose here while every artifact stayed where
+// it was. The move to go-zpkg is decided and is a republication, not an edit:
+// the factory run lands first, this constant flips after.
 package artifact
 
 import "runtime"
