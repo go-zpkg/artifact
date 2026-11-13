@@ -54,11 +54,31 @@ type LockPin struct{ Project, Version, Spec string }
 // `lockfile-version`; it records the Spack version "to track information
 // that should enhance reproducibility"; and its top level holds `roots`
 // beside `concrete_specs`.
+// lockWriterKeys are the spellings this key has had, NEWEST FIRST. It is a
+// list so that renaming the tool again is a visible edit here rather than a
+// consequence of a rule — the same reason zpkm's obsoleteEnv is a table.
+//
+// ⛔ A RENAME ADDS AN ENTRY. It does not replace one: a lock written under any
+// previous name is still a lock, and the field exists to say what wrote it.
+var lockWriterKeys = []string{"zpkb", "zbk", "bk"}
+
+// lockWriter returns the writing tool's version under whichever spelling the
+// file carries. A file has exactly one of these, so first non-empty wins and
+// no file can make the choice ambiguous.
+func lockWriter(m map[string]any) string {
+	for _, k := range lockWriterKeys {
+		if v := lockString(m[k]); v != "" {
+			return v
+		}
+	}
+	return ""
+}
+
 type Lock struct {
 	Version   int    // lockfile_version
 	Platform  string // the platform it was taken on: it CHANGES the answer
 	Generated string // RFC3339, UTC
-	ZBK       string // which zbk wrote it
+	ZPKB      string // which zpkb wrote it
 	Roots     []string
 	Pantry    string
 	Overlay   string
@@ -127,7 +147,7 @@ func RenderLock(d Lock) string {
 		"# `zbk lock` says at write time which pins are not installable, and\n" +
 		"# `zbk lock -runnable` pins what is published instead.\n\n")
 	fmt.Fprintf(&b, "lockfile_version = %d\n", d.Version)
-	fmt.Fprintf(&b, "zbk              = %q\n", d.ZBK)
+	fmt.Fprintf(&b, "zpkb             = %q\n", d.ZPKB)
 	fmt.Fprintf(&b, "platform         = %q\n", d.Platform)
 	fmt.Fprintf(&b, "generated        = %q\n", d.Generated)
 	fmt.Fprintf(&b, "pantry           = %q\n", d.Pantry)
@@ -175,19 +195,31 @@ func ParseLock(src []byte, path string) (Lock, error) {
 		Version:   int(lockInt(m["lockfile_version"])),
 		Platform:  lockString(m["platform"]),
 		Generated: lockString(m["generated"]),
-		// ⛔ `zbk`, AND THE RETIRED `bk` KEY IS NOT READ AS A FALLBACK.
-		// Reading it would be an alias for a spelling the rename removed. A
-		// lock written before the rename therefore comes back with an empty
-		// ZBK — which is survivable, because this field is informational:
-		// nothing in this package or its callers reads it back except the
-		// round-trip test. Every field that DECIDES anything is unchanged.
+		// ⛔⛔ EVERY GENERATION IS READ, NEWEST FIRST, AND THIS REVERSES AN
+		// EARLIER DECISION ON PURPOSE. This key said `bk`, then `zbk`, and now
+		// `zpkb`; the previous comment refused to read the older one, arguing
+		// that "reading it would be an alias for a spelling the rename
+		// removed".
+		//
+		// That argument is right about ENVIRONMENT VARIABLES and wrong here,
+		// and the difference is what decides it. Two variables can BOTH be set
+		// in one shell, so an alias resolves by a precedence nobody can see —
+		// which is why ZPKGM_PREFIX and ZPKGE_SPECS are refused rather than
+		// read. A lock file was written by exactly ONE tool and carries
+		// exactly ONE of these keys, so there is nothing to disambiguate:
+		// first non-empty wins, and no file can make that choice ambiguous.
+		//
+		// What the refusal cost was provenance. The field names the tool that
+		// wrote the lock, and dropping it silently made every lock from a
+		// previous era read as though nothing wrote it. With a THIRD spelling
+		// the loss would have covered two eras at once.
 		//
 		// lockfile_version is deliberately NOT bumped, by the same argument
-		// the `pinned` key used below: an old reader that does not know this
+		// the `pinned` key uses below: an old reader that does not know this
 		// key still reads the versions correctly, which is the bar the number
 		// exists for. Bumping would make every binary built before today
 		// refuse every lock written after it, over a field that names a tool.
-		ZBK:     lockString(m["zbk"]),
+		ZPKB:    lockWriter(m),
 		Pantry:  lockString(m["pantry"]),
 		Overlay: lockString(m["overlay"]),
 		Pinned:  lockString(m["pinned"]),
