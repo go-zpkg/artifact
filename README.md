@@ -1,15 +1,15 @@
-# bottle
+# artifact
 
-[![pkg.go.dev](https://img.shields.io/badge/pkg.go.dev-bottle-007d9c?logo=go&logoColor=white)](https://pkg.go.dev/github.com/go-zpkg/bottle)
+[![pkg.go.dev](https://img.shields.io/badge/pkg.go.dev-artifact-007d9c?logo=go&logoColor=white)](https://pkg.go.dev/github.com/go-zpkg/artifact)
 ![Go](https://img.shields.io/badge/Go-1.27%2B-00ADD8?logo=go&logoColor=white)
 ![License](https://img.shields.io/badge/license-BSD--3--Clause-blue)
 
-The pure-Go **bottle client** — the shared backend of the `zpkgx` family. It
-resolves a package's dependency closure, downloads the bottles from the
+The pure-Go **artifact client** — the shared backend of the `zpkgx` family. It
+resolves a package's dependency closure, downloads the artifacts from the
 configured `ZPKG_DIST` (default: `oci://ghcr.io/go-pkgx/packages`, the signed
-registry the published bottles are actually in — see `DistBase` in `zpkg.go`),
+registry the published artifacts are actually in — see `DistBase` in `zpkg.go`),
 completes the implicit libc/gcc closure a `FROM scratch` image needs, and
-execs through the glibc bottle's own loader. `CGO_ENABLED=0`, no runtime
+execs through the glibc artifact's own loader. `CGO_ENABLED=0`, no runtime
 dependencies of its own.
 
 Consumed by:
@@ -17,7 +17,7 @@ Consumed by:
 - [go-zpkg/zpkgm](https://github.com/go-zpkg/zpkgm) — the *installer*
 - [go-zpkg/zpkgx](https://github.com/go-zpkg/zpkgx) — the *runtime*
 
-so both tools share one source of truth for the bottle protocol.
+so both tools share one source of truth for the artifact protocol.
 
 ## Highlights
 
@@ -30,7 +30,7 @@ so both tools share one source of truth for the bottle protocol.
   (`zpkg.go:68`) and which is a dependency being wound down — the sovereign
   pantry is written, not converted, because that corpus carries no licence to
   convert (go-zpkg/packages#431, #440).
-- **Soname-exact FROM-scratch completion**: walks each bottle's ELF
+- **Soname-exact FROM-scratch completion**: walks each artifact's ELF
   `DT_NEEDED` and pulls the provider version that ships the exact soname an
   ABI needs (not merely the latest), so drifted sonames resolve.
 - Embedded Mozilla CA bundle (`net/http` with no system trust store), pure-Go
@@ -43,7 +43,7 @@ so both tools share one source of truth for the bottle protocol.
 ## What `Extract` refuses
 
 `Extract` is the one tar extractor in this ecosystem, and it is pointed at
-archives nobody here produced: bottles from a registry, and — through
+archives nobody here produced: artifacts from a registry, and — through
 `zbk/fetch` — **source tarballs from 233 distinct upstream hosts**, unpacked as
 root inside a chroot in the sovereign build. So what it refuses is part of its API,
 not an implementation detail.
@@ -64,7 +64,7 @@ component* that is already a symlink is refused, because there the archive
 contradicts itself.
 
 **What it does not promise.** A symlink *entry* may point anywhere, including
-out of `dest` — that is what `tar(1)` does, and bottles need relative links.
+out of `dest` — that is what `tar(1)` does, and artifacts need relative links.
 Nothing `Extract` writes afterwards follows such a link, but a caller that
 walks the result and resolves symlinks itself can still leave `dest`, and has
 to say whether it means to.
@@ -73,13 +73,13 @@ Each of these rules has a test that fails without it, and a positive control
 that an ordinary nested archive still extracts: a check tightened too far
 refuses everything and reports green.
 
-## What bounds an `.xz` bottle
+## What bounds an `.xz` artifact
 
 `Decompressor` decodes `.tar.xz` with
 [`go-compressions/xz`](https://github.com/go-compressions/xz), not
 `ulikunitz/xz`. The latter allocates the LZMA2 dictionary whole from the block
 header (`DictCap` is a minimum, not a ceiling): a 44-byte `.xz` declaring a
-1.5 GiB dictionary allocated 1,610,663,976 bytes, and a bottle or a source
+1.5 GiB dictionary allocated 1,610,663,976 bytes, and an artifact or a source
 tarball is input nobody here produced. Here the window grows with the decoded
 data: a stream declaring 1.5 GiB over a few bytes allocates about 22 KB
 (`decompress_bomb_test.go`, run in CI as a compiled binary under `ulimit -v`
@@ -92,21 +92,21 @@ fixtures (encode side).
 ## What gets verified
 
 With `ZPKG_VERIFY` on — the default — **every** pull that brings bytes onto
-the machine checks the bottle's cosign signatures against the configured
+the machine checks the artifact's cosign signatures against the configured
 trust set and fails closed. Not "every install": every pull.
 
 That distinction is the whole of it, and it has been got wrong twice. The
-first time, the check lived in `DownloadBottle`, which only the mirror
-tooling calls, so `zpkgx` and `zpkgm` installed unsigned bottles while
+first time, the check lived in `DownloadArtifact`, which only the mirror
+tooling calls, so `zpkgx` and `zpkgm` installed unsigned artifacts while
 advertising otherwise. The second time was the **catalogue** — the list of
 project names `zpkgs ls` and `<TAB>` read — which was fetched past the check
 because it is "only a list of names".
 
 A list of names is what a person then types. Forging it does not get an
-unsigned bottle installed, because the install path still verifies; it gets
+unsigned artifact installed, because the install path still verifies; it gets
 a near-miss name offered at the prompt, which is the whole of a typosquat.
 And since that catalogue is now fetched once and read from disk for days,
-it is verified *less* often than a bottle, not more — so the one check it
+it is verified *less* often than an artifact, not more — so the one check it
 gets has to happen.
 
 The rule, for anything added later: if it pulls bytes, it goes through
@@ -131,7 +131,7 @@ ZPKG_EXTRA_TRUSTED_KEYS='alice:RWQ…' ZPKG_TRUST_THRESHOLD=2 zpkgx +fftw.org
 
 Two people building the same inputs get the **same** hash — deliberately, and
 that collision is the evidence. What tells them apart is the *attestation*:
-each attaches their own signature referrer to the one bottle, and the client
+each attaches their own signature referrer to the one artifact, and the client
 counts how many distinct trusted keys it can verify. A threshold of 2 means
 "I install nothing that two builders did not independently reproduce".
 
@@ -140,11 +140,11 @@ Three rules this hangs on:
 - **Each key counts once** (TUF §5.4.2). Otherwise a threshold of two is met
   by pushing one signature twice, which anyone who can push can do.
 - **A signature from outside the trust set is not an error.** Anybody may sign
-  a public artefact; if a stranger's signature invalidated a bottle,
-  invalidating any bottle would cost one push. It is counted and ignored.
+  a public artefact; if a stranger's signature invalidated an artifact,
+  invalidating any artifact would cost one push. It is counted and ignored.
 - **A threshold nobody could meet is refused when the configuration is read**,
   not at install time, because that mistake is in the configuration and a
-  message about the bottle would send you looking in the wrong place.
+  message about the artifact would send you looking in the wrong place.
 
 The signer name you see comes from **your** trust set and never from the
 registry: a name on the artefact is written by whoever pushed it. The referrer
@@ -172,7 +172,7 @@ This has happened once, on **2026-11-06**:
 | key id | state | what it signed |
 | --- | --- | --- |
 | `df35c3a46931d3e6` | current | everything from 2026-11-06 |
-| `3eae61fe7d7cb689` | retired, as `go-zpkg-until-2026-11` | every bottle before it |
+| `3eae61fe7d7cb689` | retired, as `go-zpkg-until-2026-11` | every artifact before it |
 
 ⛔ **Retired and not revoked, which was a judgement and not a finding.** The
 old key's private half could not be located — two scans of the maintainer's
@@ -185,7 +185,7 @@ then it does.
 `rotation_test.go` pins both key ids as literals, so neither variable can
 change without a test saying so.
 
-And a retired key is **not discounted**: a bottle signed by the current key
+And a retired key is **not discounted**: an artifact signed by the current key
 and a retired one counts as *two*. That is exactly right during an overlap,
 where the publisher deliberately signs with both — a scheme that ranked
 retired keys lower would make a threshold of 2 unmeetable precisely while
@@ -193,20 +193,20 @@ rotating.
 
 **Revoking** is saying somebody else may hold the key. Nothing it signed can
 be told from a forgery, so its signatures count for nothing — including on
-bottles it signed legitimately before the compromise.
+artifacts it signed legitimately before the compromise.
 
 ⛔ **And they cannot be told apart by date, because there is no date.** Every
-published bottle carries the same pinned timestamp so that a re-publish is
+published artifact carries the same pinned timestamp so that a re-publish is
 byte-identical, so *"was this signed before the key leaked?"* has no answer on
 the artefact. Honouring signatures made "before" a revocation would be a check
 that cannot fail — and it would restore trust in exactly the artefacts an
 attacker would plant. Whether to buy that distinction with a third-party
 timestamp is
-[bottle#215](https://github.com/go-zpkg/bottle/issues/215).
+[artifact#215](https://github.com/go-zpkg/artifact/issues/215).
 
 A revoked signature is reported **as itself**, not folded into "signed by an
 untrusted key". A stranger's signature is noise anybody can make; your own
-revoked key on a bottle is a fact about your supply chain. Every entry carries
+revoked key on an artifact is a fact about your supply chain. Every entry carries
 a `Because`, because a revocation without a reason is a rumour.
 
 ## What a project NAME may be
@@ -267,7 +267,7 @@ version strings carry one, and the only non-alphanumeric rune among them is
 1.8.2_1 satisfies "=1.8.2"   ? true
 ```
 
-A lock pinning the rebuilt bottle would have installed the un-rebuilt one — the
+A lock pinning the rebuilt artifact would have installed the un-rebuilt one — the
 vulnerable one, since a rebuild is what a toolchain security fix produces — and
 said nothing. `satisfies` routes every operator through one comparator, so
 ordering and exactness were the same fix.
@@ -288,7 +288,7 @@ numeric components alone — and the rebuild counter is not one of them, so
 the build it supersedes.
 
 `PublishedTagFor` walks these and asks the registry about each, so a lock
-pinning the rebuilt bottle was answered "published" on finding the un-rebuilt
+pinning the rebuilt artifact was answered "published" on finding the un-rebuilt
 one, and a catalogue would advertise a rebuild that does not exist. That is
 the same defect as the comparator's, by a second route, and the same one the
 non-zero rule already guards against for neighbouring releases — *26.8.1 must
@@ -310,19 +310,19 @@ tags:
 
 ```
 VersionsFor(fftw.org) = 3.3.11_1          # 3.3.11 is published, and absent
-=3.3.11  darwin/aarch64 -> (nothing)      # the bottle is there, and pullable
+=3.3.11  darwin/aarch64 -> (nothing)      # the artifact is there, and pullable
 ```
 
-So **rebuilding a bottle silently broke every lock that pinned the version it
+So **rebuilding an artifact silently broke every lock that pinned the version it
 rebuilt** — the exact mirror of the comparator defect, where a pin on the
-rebuilt bottle was satisfied by the un-rebuilt, vulnerable one. With three
+rebuilt artifact was satisfied by the un-rebuilt, vulnerable one. With three
 builds of one version the listing kept only the last: `1.8.2`, `1.8.2_1` and
 `1.8.2_2` all answered `1.8.2_2`.
 
 Superseding is a question of **order**, which `cmpVer` answers, not a licence
 to delete the loser. The counter now joins the key, so the newest is still the
 rebuild and every published build stays pinnable. Two *spellings* of one build
-still collapse — `3.3.11_1` and `v3.3.11_1` are one bottle — which is what the
+still collapse — `3.3.11_1` and `v3.3.11_1` are one artifact — which is what the
 key is for.
 
 ### ⛔ pkgx cannot read a `_N` tag, and that is a deliberate trade
@@ -336,7 +336,7 @@ and otherwise throws `invalid version`. For `3.3.11_1` the parts are `3`, `3`,
 
 So **pointing a pkgx client at this registry is not a supported
 configuration** once a project carries a rebuild. It throws rather than
-resolving the wrong bottle, which is the better of the two failures, but it is
+resolving the wrong artifact, which is the better of the two failures, but it is
 a failure.
 
 The alternatives were weighed and rejected: a fourth numeric component
@@ -458,14 +458,14 @@ a type:
 | | |
 |---|---|
 | `*NotPublishedError` | the registry does not carry the project **at all**. ghcr spells this as `403: denied` at the token endpoint for a repository that does not exist, which reads as a credentials fault and is not one |
-| `*NoBottleHereError` | the project is published, just not for **your** platform. It carries the versions that exist and the ones with no bottle, so the message stays the sentence the field reports settled on |
+| `*NoArtifactHereError` | the project is published, just not for **your** platform. It carries the versions that exist and the ones with no artifact, so the message stays the sentence the field reports settled on |
 
 `ProjectToRequest(err)` answers both with the project's name, and `""` for
 everything else. One call, because two predicates at the call site is how
 one of them comes to be forgotten — which is what happened:
 `*NotPublishedError` alone covers the *rare* half. Measured against the
 published `darwin/aarch64` catalogue on 2026-10-23, **567 of 1940 projects**
-had a recipe and no bottle, and for the length of one release
+had a recipe and no artifact, and for the length of one release
 `zpkgx`'s "you can ask for this" hint could not see any of them.
 
 ⛔ The prose predicate that preceded them is still here as
@@ -477,7 +477,7 @@ the package was published and the *command* was missing.
 ## A closure can be completed for a platform you are not on
 
 `CompleteClosure` resolves a package's declared closure, installs it, then
-reads the bottles' own `DT_NEEDED` (or Mach-O load commands) and pulls
+reads the artifacts' own `DT_NEEDED` (or Mach-O load commands) and pulls
 whatever provides each unsatisfied soname — the implicit glibc/gcc
 libraries and the undeclared ones that `package.yml` graphs omit — until
 the closure is complete enough to run on a `FROM scratch` image.
@@ -486,12 +486,12 @@ the closure is complete enough to run on a `FROM scratch` image.
 machine can audit all of them:
 
 ```go
-closure, err := bottle.CompleteClosureFor(roots, dir, "linux", "x86-64")
+closure, err := artifact.CompleteClosureFor(roots, dir, "linux", "x86-64")
 ```
 
 ⛔ **Why it had to exist.** `zbk unresolved` reports every reference an
 installed closure cannot answer; wired into CI it found **967
-unresolvable references over 259 of 1407 bottled projects** on
+unresolvable references over 259 of 1407 packaged projects** on
 linux/x86-64. The other five platforms had never been asked, because this
 function resolved and installed for the host and nothing else could be
 said honestly — the same shape as a CVE lane that scanned two platforms
@@ -508,14 +508,14 @@ both directions, and `CompleteClosure` is now exactly
 construction rather than by a second reading of the same logic.
 
 ⛔ **A load command is input from a stranger.** The `@rpath` references this
-reads come out of bottles that were *downloaded*, and both halves of one go
+reads come out of artifacts that were *downloaded*, and both halves of one go
 somewhere: the reference becomes the path that is stat'd to decide a reference
 is already satisfied, and the project it names becomes a registry repository
 and a store path **written to** (`<dir>/<project>/v<version>`). Since v0.58.0
 a reference that does not stay inside the store (`filepath.IsLocal`) and a
 project that is not a usable name (`ValidateProjectName`) are both refused —
 and both refusals are *said*, because a silent skip is the failure this code
-already paid for once at 1266 references. Without the first, a bottle naming
+already paid for once at 1266 references. Without the first, an artifact naming
 `@rpath/../../../../etc/passwd` had that reference passed over as "satisfied"
 on the strength of a file that is neither a library nor in the store.
 
@@ -549,10 +549,10 @@ and a compiler cannot see it. CI therefore does not stop at cross-compiling: it
 | lane | how |
 | --- | --- |
 | `test (arm64\|riscv64\|ppc64le\|s390x\|loong64, qemu)` | `go test -exec qemu-<arch>-static`, `-count=1` so a cached PASS from the host architecture cannot stand in for a run that never happened |
-| `test (js/wasm, node)` | node 24. Go's js/wasm port takes `net/http` through the host's `fetch()` and the filesystem through the host's `fs` — two runtimes no other lane exercises. A browser that installs a signed bottle into its own store runs this code |
-| `test (wasip1/wasm, wasmtime)` | a *different* wasm port with a different syscall surface: no network at all, and a filesystem only where one is granted. A package that installs bottles has to know which of the two it is on |
+| `test (js/wasm, node)` | node 24. Go's js/wasm port takes `net/http` through the host's `fetch()` and the filesystem through the host's `fs` — two runtimes no other lane exercises. A browser that installs a signed artifact into its own store runs this code |
+| `test (wasip1/wasm, wasmtime)` | a *different* wasm port with a different syscall surface: no network at all, and a filesystem only where one is granted. A package that installs artifacts has to know which of the two it is on |
 
-A bottle for the `wasip1/wasm` platform is published with the OCI platform
+An artifact for the `wasip1/wasm` platform is published with the OCI platform
 `os=wasip1, architecture=wasm` (the Docker+Wasm / CNCF wasm-oci-artifact
 spelling; only `x86-64` and `aarch64` are renamed), and a recipe may scope a
 block to `wasip1:`, `windows:` or `js:` without it being read as a plain value

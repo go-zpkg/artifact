@@ -1,4 +1,4 @@
-package bottle
+package artifact
 
 import (
 	"strings"
@@ -8,7 +8,7 @@ import (
 // ⛔ A SHORTER SPELLING IS ONLY THE SAME VERSION WHEN WHAT IT DROPS IS ZERO.
 //
 // Measured on the published registry, 2026-10-22: nodejs.org 26.8.1 has no
-// linux/x86-64 bottle and 26.8.0 does. `publishedTagFor` walks these
+// linux/x86-64 artifact and 26.8.0 does. `publishedTagFor` walks these
 // spellings and asks the registry about each, so with "26.8.0" in the list
 // for 26.8.1 it got a hit on a DIFFERENT RELEASE and answered yes. `bk
 // catalog` then recorded 26.8.1 as the version linux/x86-64 carries, the

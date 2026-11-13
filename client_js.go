@@ -1,6 +1,6 @@
 //go:build js
 
-package bottle
+package artifact
 
 import "net/http"
 
@@ -23,7 +23,7 @@ import "net/http"
 // and fetch exposes no dial or TLS-handshake phase to put a deadline on.
 //
 // The stall watchdog stays: it watches the response BODY for silence, which is
-// transport-independent — and a bottle is exactly the kind of long download it
+// transport-independent — and an artifact is exactly the kind of long download it
 // exists for.
 func NewHTTPClient() *http.Client {
 	return &http.Client{

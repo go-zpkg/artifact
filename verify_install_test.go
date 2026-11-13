@@ -1,4 +1,4 @@
-package bottle
+package artifact
 
 import (
 	"net/http"
@@ -10,9 +10,9 @@ import (
 	"github.com/go-attest/sign"
 )
 
-// pushSignedBottle pushes a bottle whose signature referrer is signed by kp, and
+// pushSignedArtifact pushes an artifact whose signature referrer is signed by kp, and
 // points the pinned key at kp for the duration of the test.
-func pushSignedBottle(t *testing.T, c *OCIClient, project string, kp *sign.Keypair, tarball []byte, withSig bool) {
+func pushSignedArtifact(t *testing.T, c *OCIClient, project string, kp *sign.Keypair, tarball []byte, withSig bool) {
 	t.Helper()
 	refs := []Referrer{
 		{ArtifactType: "application/vnd.cyclonedx+json", MediaType: "application/vnd.cyclonedx+json", Blob: []byte(`{}`)},
@@ -75,10 +75,10 @@ func TestVerifyRequiredFromConfig(t *testing.T) {
 	}
 }
 
-func TestVerifyBottle(t *testing.T) {
+func TestVerifyArtifact(t *testing.T) {
 	fr := newFakeRegistry(t, false)
 	defer fr.close()
-	c, _ := NewOCIClient(fr.base("go-zpkg/bottles"))
+	c, _ := NewOCIClient(fr.base("go-zpkg/artifacts"))
 	kp, err := sign.Generate()
 	if err != nil {
 		t.Fatal(err)
@@ -87,35 +87,35 @@ func TestVerifyBottle(t *testing.T) {
 	SigningPublicKey = kp.PublicKeyString()
 	defer func() { SigningPublicKey = old }()
 
-	tarball := makeGzTarball("bottle-body")
-	pushSignedBottle(t, c, "signed.ok", kp, tarball, true)
-	if err := c.VerifyBottle("signed.ok", "1.0.0", "linux", "x86-64", tarball); err != nil {
-		t.Fatalf("valid signed bottle rejected: %v", err)
+	tarball := makeGzTarball("artifact-body")
+	pushSignedArtifact(t, c, "signed.ok", kp, tarball, true)
+	if err := c.VerifyArtifact("signed.ok", "1.0.0", "linux", "x86-64", tarball); err != nil {
+		t.Fatalf("valid signed artifact rejected: %v", err)
 	}
 	// tampered tarball → payload digest mismatch
-	if err := c.VerifyBottle("signed.ok", "1.0.0", "linux", "x86-64", makeGzTarball("tampered")); err == nil {
+	if err := c.VerifyArtifact("signed.ok", "1.0.0", "linux", "x86-64", makeGzTarball("tampered")); err == nil {
 		t.Error("tampered tarball accepted")
 	}
-	// unsigned bottle → fail closed
-	pushSignedBottle(t, c, "unsigned.pkg", kp, tarball, false)
-	if err := c.VerifyBottle("unsigned.pkg", "1.0.0", "linux", "x86-64", tarball); err == nil ||
+	// unsigned artifact → fail closed
+	pushSignedArtifact(t, c, "unsigned.pkg", kp, tarball, false)
+	if err := c.VerifyArtifact("unsigned.pkg", "1.0.0", "linux", "x86-64", tarball); err == nil ||
 		!strings.Contains(err.Error(), "unsigned") {
-		t.Errorf("unsigned bottle: expected fail-closed, got %v", err)
+		t.Errorf("unsigned artifact: expected fail-closed, got %v", err)
 	}
 	// missing version → resolve error
-	if err := c.VerifyBottle("signed.ok", "9.9.9", "linux", "x86-64", tarball); err == nil {
+	if err := c.VerifyArtifact("signed.ok", "9.9.9", "linux", "x86-64", tarball); err == nil {
 		t.Error("missing version accepted")
 	}
 	// bad project → repository() error
-	if err := c.VerifyBottle("BAD..name/../x", "1.0.0", "linux", "x86-64", tarball); err == nil {
+	if err := c.VerifyArtifact("BAD..name/../x", "1.0.0", "linux", "x86-64", tarball); err == nil {
 		t.Error("bad project accepted")
 	}
 }
 
-func TestVerifyBottleMalformedSig(t *testing.T) {
+func TestVerifyArtifactMalformedSig(t *testing.T) {
 	fr := newFakeRegistry(t, false)
 	defer fr.close()
-	c, _ := NewOCIClient(fr.base("go-zpkg/bottles"))
+	c, _ := NewOCIClient(fr.base("go-zpkg/artifacts"))
 	tarball := makeGzTarball("x")
 	// a signature referrer with no cosign annotation → malformed
 	_, err := c.PushWithReferrers("malformed.sig", "1.0.0", "linux", "x86-64", tarball, ".tar.gz",
@@ -123,16 +123,16 @@ func TestVerifyBottleMalformedSig(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := c.VerifyBottle("malformed.sig", "1.0.0", "linux", "x86-64", tarball); err == nil ||
+	if err := c.VerifyArtifact("malformed.sig", "1.0.0", "linux", "x86-64", tarball); err == nil ||
 		!strings.Contains(err.Error(), "malformed") {
 		t.Errorf("expected malformed error, got %v", err)
 	}
 }
 
-func TestDownloadBottleVerify(t *testing.T) {
+func TestDownloadArtifactVerify(t *testing.T) {
 	fr := newFakeRegistry(t, false)
 	defer fr.close()
-	c, _ := NewOCIClient(fr.base("go-zpkg/bottles"))
+	c, _ := NewOCIClient(fr.base("go-zpkg/artifacts"))
 	kp, err := sign.Generate()
 	if err != nil {
 		t.Fatal(err)
@@ -142,32 +142,32 @@ func TestDownloadBottleVerify(t *testing.T) {
 	defer func() { SigningPublicKey = oldKey }()
 
 	tarball := makeGzTarball("dl-body")
-	pushSignedBottle(t, c, "dl.signed", kp, tarball, true)
-	pushSignedBottle(t, c, "dl.unsigned", kp, tarball, false)
+	pushSignedArtifact(t, c, "dl.signed", kp, tarball, true)
+	pushSignedArtifact(t, c, "dl.unsigned", kp, tarball, false)
 
 	oldDist := DistBase
-	DistBase = fr.base("go-zpkg/bottles")
+	DistBase = fr.base("go-zpkg/artifacts")
 	resetOCICache()
 	defer func() { DistBase = oldDist; resetOCICache() }()
 
-	// ZPKG_VERIFY + signed OCI bottle → succeeds
+	// ZPKG_VERIFY + signed OCI artifact → succeeds
 	t.Setenv("ZPKG_VERIFY", "1")
-	if _, _, err := DownloadBottle("dl.signed", "1.0.0", "linux", "x86-64"); err != nil {
+	if _, _, err := DownloadArtifact("dl.signed", "1.0.0", "linux", "x86-64"); err != nil {
 		t.Fatalf("signed download+verify: %v", err)
 	}
-	// ZPKG_VERIFY + unsigned OCI bottle → fail closed
-	if _, _, err := DownloadBottle("dl.unsigned", "1.0.0", "linux", "x86-64"); err == nil {
-		t.Error("unsigned bottle passed under ZPKG_VERIFY")
+	// ZPKG_VERIFY + unsigned OCI artifact → fail closed
+	if _, _, err := DownloadArtifact("dl.unsigned", "1.0.0", "linux", "x86-64"); err == nil {
+		t.Error("unsigned artifact passed under ZPKG_VERIFY")
 	}
-	// with verification explicitly opted out (ZPKG_VERIFY=0), an unsigned bottle
+	// with verification explicitly opted out (ZPKG_VERIFY=0), an unsigned artifact
 	// downloads fine (verify is on by default, so this needs the opt-out).
 	t.Setenv("ZPKG_VERIFY", "0")
-	if _, _, err := DownloadBottle("dl.unsigned", "1.0.0", "linux", "x86-64"); err != nil {
+	if _, _, err := DownloadArtifact("dl.unsigned", "1.0.0", "linux", "x86-64"); err != nil {
 		t.Errorf("unverified download: %v", err)
 	}
 }
 
-func TestVerifyBottleFetchFailures(t *testing.T) {
+func TestVerifyArtifactFetchFailures(t *testing.T) {
 	kp, _ := sign.Generate()
 	old := SigningPublicKey
 	SigningPublicKey = kp.PublicKeyString()
@@ -185,44 +185,44 @@ func TestVerifyBottleFetchFailures(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			fr := newFakeRegistry(t, false)
 			defer fr.close()
-			c, _ := NewOCIClient(fr.base("go-zpkg/bottles"))
-			pushSignedBottle(t, c, "fetch.fail", kp, tarball, true)
+			c, _ := NewOCIClient(fr.base("go-zpkg/artifacts"))
+			pushSignedArtifact(t, c, "fetch.fail", kp, tarball, true)
 			fr.hook = func(r *http.Request) (int, bool) {
 				_, verb, ref := splitV2(r.URL.Path)
 				return 500, fail(r.Method, verb, ref)
 			}
-			if err := c.VerifyBottle("fetch.fail", "1.0.0", "linux", "x86-64", tarball); err == nil {
+			if err := c.VerifyArtifact("fetch.fail", "1.0.0", "linux", "x86-64", tarball); err == nil {
 				t.Errorf("%s: expected fetch failure", name)
 			}
 		})
 	}
 }
 
-func TestDownloadBottleVerifyHTTP(t *testing.T) {
+func TestDownloadArtifactVerifyHTTP(t *testing.T) {
 	oldDist := DistBase
 	DistBase = "https://dist.example.test"
 	defer func() { DistBase = oldDist }()
 	t.Setenv("ZPKG_VERIFY", "1")
 	// the HTTP transport has no signatures → fail closed before any fetch
-	if _, _, err := DownloadBottle("p", "1.0.0", "linux", "x86-64"); err == nil ||
+	if _, _, err := DownloadArtifact("p", "1.0.0", "linux", "x86-64"); err == nil ||
 		!strings.Contains(err.Error(), "ZPKG_VERIFY") {
 		t.Errorf("HTTP under ZPKG_VERIFY should fail closed, got %v", err)
 	}
 }
 
 // TestInstallVerify pins the hole this file used to leave open: the guarantee
-// pkgx and pkgm advertise — "verifying each bottle's signature (fail-closed)" —
-// was enforced in DownloadBottle, which only the MIRROR tooling calls. Every
-// actual install went through fetchBottle, which checked nothing, so
-// `ZPKG_VERIFY=1 pkgx +pkg` cheerfully installed an unsigned bottle. Measured on
+// pkgx and pkgm advertise — "verifying each artifact's signature (fail-closed)" —
+// was enforced in DownloadArtifact, which only the MIRROR tooling calls. Every
+// actual install went through fetchArtifact, which checked nothing, so
+// `ZPKG_VERIFY=1 pkgx +pkg` cheerfully installed an unsigned artifact. Measured on
 // a real registry before the fix.
 func TestInstallVerify(t *testing.T) {
-	// pushSignedBottle publishes for linux/x86-64; Install resolves for the host.
+	// pushSignedArtifact publishes for linux/x86-64; Install resolves for the host.
 	setGoos(t, "linux")
 	setGoarch(t, "x86-64")
 	fr := newFakeRegistry(t, false)
 	defer fr.close()
-	c, _ := NewOCIClient(fr.base("go-zpkg/bottles"))
+	c, _ := NewOCIClient(fr.base("go-zpkg/artifacts"))
 	kp, err := sign.Generate()
 	if err != nil {
 		t.Fatal(err)
@@ -231,13 +231,13 @@ func TestInstallVerify(t *testing.T) {
 	SigningPublicKey = kp.PublicKeyString()
 	defer func() { SigningPublicKey = oldKey }()
 
-	tarball := ociGzBottle(t, "inst.signed", "1.0.0", map[string]string{"bin/s": "x"})
-	pushSignedBottle(t, c, "inst.signed", kp, tarball, true)
-	unsigned := ociGzBottle(t, "inst.unsigned", "1.0.0", map[string]string{"bin/u": "x"})
-	pushSignedBottle(t, c, "inst.unsigned", kp, unsigned, false)
+	tarball := ociGzArtifact(t, "inst.signed", "1.0.0", map[string]string{"bin/s": "x"})
+	pushSignedArtifact(t, c, "inst.signed", kp, tarball, true)
+	unsigned := ociGzArtifact(t, "inst.unsigned", "1.0.0", map[string]string{"bin/u": "x"})
+	pushSignedArtifact(t, c, "inst.unsigned", kp, unsigned, false)
 
 	oldDist := DistBase
-	DistBase = fr.base("go-zpkg/bottles")
+	DistBase = fr.base("go-zpkg/artifacts")
 	resetOCICache()
 	defer func() { DistBase = oldDist; resetOCICache() }()
 
@@ -249,12 +249,12 @@ func TestInstallVerify(t *testing.T) {
 	// unsigned → refused, and nothing is written
 	dir := t.TempDir()
 	if _, err := Install(Resolved{"inst.unsigned", ParseVer("1.0.0")}, dir); err == nil {
-		t.Error("an unsigned bottle installed under ZPKG_VERIFY")
+		t.Error("an unsigned artifact installed under ZPKG_VERIFY")
 	} else if !strings.Contains(err.Error(), "unsigned") {
 		t.Errorf("install error = %v, want it to name the missing signature", err)
 	}
 	if _, err := os.Stat(filepath.Join(dir, "inst.unsigned")); err == nil {
-		t.Error("refused bottle left files behind")
+		t.Error("refused artifact left files behind")
 	}
 	// explicit opt-out → installs, as documented
 	t.Setenv("ZPKG_VERIFY", "0")

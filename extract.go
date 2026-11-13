@@ -1,9 +1,9 @@
-// Copyright (c) 2026, the go-zpkg/bottle authors
+// Copyright (c) 2026, the go-zpkg/artifact authors
 // All rights reserved.
 //
 // SPDX-License-Identifier: BSD-3-Clause
 
-package bottle
+package artifact
 
 import (
 	"archive/tar"
@@ -22,7 +22,7 @@ import (
 // source) names an absolute path, or one that after component-stripping would
 // escape the destination directory. It is wrapped with the offending name so
 // callers can test for it with errors.Is.
-var ErrInsecurePath = errors.New("bottle: insecure path in archive")
+var ErrInsecurePath = errors.New("artifact: insecure path in archive")
 
 // osWriteFlags is how extracted regular files are opened.
 const osWriteFlags = os.O_WRONLY | os.O_CREATE | os.O_TRUNC
@@ -42,7 +42,7 @@ var (
 
 // Extract unpacks every entry of tr into dest, stripping strip leading path
 // components from each entry name (strip == 0 keeps the archive layout). It is
-// the shared archive extractor for the pkgx ecosystem — both bottle's bottle
+// the shared archive extractor for the pkgx ecosystem — both artifact's artifact
 // installer and bk's source fetcher route through it, so a single implementation
 // carries the invariants both rely on:
 //
@@ -65,7 +65,7 @@ var (
 //     unsupported entry types (fifos, devices, ...) are skipped.
 //
 // What it does NOT promise: a symlink ENTRY may point anywhere, including out
-// of dest, which is what tar(1) does and what a bottle's relative links need.
+// of dest, which is what tar(1) does and what an artifact's relative links need.
 // Nothing Extract writes afterwards follows such a link — that is the
 // ErrInsecurePath rule above — but a caller that walks the result and resolves
 // symlinks itself can still leave dest, and must say whether it means to.
@@ -142,7 +142,7 @@ func Extract(tr *tar.Reader, dest string, strip int) error {
 			//
 			// reaches outside the destination on the second entry, which is
 			// the classic tar symlink traversal. Nothing in this factory
-			// ships such an archive, and "our bottles are signed" is not the
+			// ships such an archive, and "our artifacts are signed" is not the
 			// property an extractor should rely on — ZPKG_VERIFY=0 is a
 			// supported mode for a loopback registry, and an extractor is
 			// exactly where defence in depth belongs.
@@ -154,8 +154,8 @@ func Extract(tr *tar.Reader, dest string, strip int) error {
 			//	open …/share/terminfo/n/ncr260vt300wpp: too many levels of
 			//	symbolic links
 			//
-			// while the aarch64 bottle of the same version unpacked fine. A
-			// published bottle that cannot be unpacked is its own defect; it
+			// while the aarch64 artifact of the same version unpacked fine. A
+			// published artifact that cannot be unpacked is its own defect; it
 			// is also the only reason this line was ever looked at.
 			//
 			// A SYMLINK only. An existing regular file is handled by the

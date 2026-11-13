@@ -1,11 +1,11 @@
-package bottle
+package artifact
 
 import (
 	"encoding/json"
 	"fmt"
 )
 
-// SpecAnnotation carries a bottle's concrete spec on its per-platform OCI
+// SpecAnnotation carries an artifact's concrete spec on its per-platform OCI
 // manifest, as JSON.
 //
 // ⛔ THE TAG CARRIES THE ADDRESS, THE ANNOTATION CARRIES THE MEANING. An
@@ -22,11 +22,11 @@ import (
 //
 // The key is declared in annotations.go and read through AnnotationPresent(),
 // which keeps "absent" distinguishable from "present and empty" — an empty
-// spec is a malformed bottle and a missing one is simply an older bottle.
+// spec is a malformed artifact and a missing one is simply an older artifact.
 
 // specJSON is the wire form. Field names are short because an OCI annotation
 // value travels in every manifest fetch, and explicit because a Go field
-// rename must not silently change what published bottles mean.
+// rename must not silently change what published artifacts mean.
 // SpecVersion is the payload's format version.
 //
 // ⛔⛔ A NUMBER, NOT A SCHEMA, AND IT BUYS ONE THING: A LEGIBLE FAILURE.
@@ -35,11 +35,11 @@ import (
 // spec carrying a new identity-bearing field parses cleanly here as a v1
 // spec that happens to lack it.
 //
-// The bottle is not installed in that case, because VerifySpec recomputes
+// The artifact is not installed in that case, because VerifySpec recomputes
 // the hash and the dropped field moves it. So the outcome is already
-// fail-closed — but the message is "the bottle does not match its own
+// fail-closed — but the message is "the artifact does not match its own
 // description", which reads as tampering and sends its reader to look for an
-// attacker. The truth is "this bottle was written by a release newer than
+// attacker. The truth is "this artifact was written by a release newer than
 // yours", and only a version field can say so.
 //
 // A JSON Schema would say more and cost more: this value travels in every
@@ -94,7 +94,7 @@ func MarshalSpec(c Concrete) string {
 // from whoever could push to it, and the canonical form had to be made
 // injective for exactly this reason: a validator guards the door it stands
 // at, and the annotation arrives through another one. Callers that care
-// which bottle they have must use VerifySpec, not this.
+// which artifact they have must use VerifySpec, not this.
 func UnmarshalSpec(s string) (Concrete, error) {
 	var j specJSON
 	if err := json.Unmarshal([]byte(s), &j); err != nil {
@@ -106,7 +106,7 @@ func UnmarshalSpec(s string) (Concrete, error) {
 	// looking for an attacker. Say which version it is instead.
 	if j.V > SpecVersion {
 		return Concrete{}, fmt.Errorf(
-			"%s is format version %d and this build understands %d: the bottle was published by a newer release of go-zpkg",
+			"%s is format version %d and this build understands %d: the artifact was published by a newer release of go-zpkg",
 			SpecAnnotation, j.V, SpecVersion)
 	}
 	c := Concrete{Platform: j.Platform, Recipe: j.Recipe, Graft: j.Graft}
@@ -128,12 +128,12 @@ func UnmarshalSpec(s string) (Concrete, error) {
 // ⛔⛔ A SPEC THAT DOES NOT HASH TO ITS OWN ADDRESS IS NOT DESCRIPTION, IT IS
 // A CLAIM. Both halves are supplied by the publisher: the tag says
 // `-h<hash>`, the annotation says what that hash is of. Reading the second
-// without checking it against the first would let a bottle tagged as the
+// without checking it against the first would let an artifact tagged as the
 // plain build describe itself as the CUDA one, or the reverse — and the
 // reverse is the one that matters, because the lie is in the direction of
 // "this is the build you asked for".
 //
-// An empty wantHash means the tag made no claim (every bottle published
+// An empty wantHash means the tag made no claim (every artifact published
 // before this existed), and then there is nothing to check against: the spec
 // is returned as the unverified description it is, and a caller deciding
 // anything on it should say so.
@@ -147,19 +147,19 @@ func VerifySpec(annotation, wantHash string) (Concrete, error) {
 	}
 	if got := c.Hash(); got != wantHash {
 		return Concrete{}, fmt.Errorf(
-			"%s describes a build whose hash is %q, but the tag says %q: the bottle does not match its own description",
+			"%s describes a build whose hash is %q, but the tag says %q: the artifact does not match its own description",
 			SpecAnnotation, got, wantHash)
 	}
 	return c, nil
 }
 
-// SpecOf reads a published bottle's concrete spec from its manifest and
+// SpecOf reads a published artifact's concrete spec from its manifest and
 // verifies it against the hash in its tag.
 //
-// A bottle published before specs existed carries no annotation; that is
+// An artifact published before specs existed carries no annotation; that is
 // reported as an absent spec (ok=false) rather than an error, because "we
 // do not know what options this was built with" is the truth about every
-// bottle in the registry today.
+// artifact in the registry today.
 func (c *OCIClient) SpecOf(project, tag, osn, arch string) (Concrete, bool, error) {
 	ann, err := c.Annotations(project, tag, osn, arch)
 	if err != nil {

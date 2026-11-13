@@ -1,4 +1,4 @@
-package bottle
+package artifact
 
 import (
 	"os"
@@ -9,11 +9,11 @@ import (
 // ⛔⛔ THE DEFECT THIS FILE IS THE CONTROL FOR.
 //
 // Before storepath.go, the installed path was `<dir>/<project>/v<version>`,
-// composed inline at nine call sites. Two bottles of one version that differ
+// composed inline at nine call sites. Two artifacts of one version that differ
 // only in build options resolve to the same directory, so the second install
 // meets the first and renameOrExplain refuses:
 //
-//	already holds other content … the bottle carries v3.3.11
+//	already holds other content … the artifact carries v3.3.11
 //
 // Correct behaviour on a wrong layout. The fix is not to relax the refusal —
 // it is the only thing standing between a user and a silently replaced
@@ -33,14 +33,14 @@ func TestTwoBuildsOfOneVersionGetDifferentPrefixes(t *testing.T) {
 	if a == b {
 		t.Fatalf("+cuda and ~cuda share a prefix: %s", a)
 	}
-	// And neither of them may collide with a bottle whose identity is simply
+	// And neither of them may collide with an artifact whose identity is simply
 	// not recorded — that is a third, distinct thing.
 	if c := StorePrefix("/store", "fftw.org", ver); c == a || c == b {
 		t.Fatalf("an unrecorded identity collided with a recorded one: %s", c)
 	}
 }
 
-// A bottle that arrived with no spec annotation keeps the path it has always
+// An artifact that arrived with no spec annotation keeps the path it has always
 // had. Nothing is migrated and nothing is re-fetched: the layout extends, it
 // does not move.
 func TestAnUnrecordedIdentityKeepsThePlainPath(t *testing.T) {
@@ -85,7 +85,7 @@ func TestWhatIsNotAVersionDirectory(t *testing.T) {
 		}
 	}
 	// ⛔ `v1` AND `v1.2` ARE NOT ON THAT LIST, AND THE FIRST RUN OF THIS TEST
-	// IS WHY. They are legitimate version spellings — a bottle really can be
+	// IS WHY. They are legitimate version spellings — an artifact really can be
 	// version 1 — so nothing in the NAME tells them from the aliases
 	// writeVersionLinks writes. What tells them apart is that the aliases are
 	// SYMLINKS: os.ReadDir lstats, so their IsDir is false and InstalledBuilds

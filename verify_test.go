@@ -1,4 +1,4 @@
-package bottle
+package artifact
 
 import (
 	"crypto/sha256"
@@ -18,7 +18,7 @@ func TestVerifySignature(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	tarball := []byte("bottle tarball bytes")
+	tarball := []byte("artifact tarball bytes")
 	payload, err := sign.SimpleSigningPayload("pkg:pkgx/x@1", digestOf(tarball))
 	if err != nil {
 		t.Fatal(err)

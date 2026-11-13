@@ -1,4 +1,4 @@
-package bottle
+package artifact
 
 import (
 	"crypto/sha256"
@@ -10,12 +10,12 @@ import (
 	"unicode/utf8"
 )
 
-// A CONCRETE SPEC IS WHAT A BOTTLE IS.
+// A CONCRETE SPEC IS WHAT A ARTIFACT IS.
 //
 // # The question this answers
 //
-// Two bottles of the same version, compiled with different options, were
-// indistinguishable: the identity of a bottle was
+// Two artifacts of the same version, compiled with different options, were
+// indistinguishable: the identity of an artifact was
 //
 //	<project> : <version>[_N][-glibc<X>]  ×  <os>/<arch>
 //
@@ -44,8 +44,8 @@ import (
 // answer here because it was already answered.
 //
 // So: VariantConstraints are what a user writes (see ParseConstraints), and
-// Variants are what a bottle has. Mixing them would put a question into an
-// identity, and two bottles reached by different questions would hash apart
+// Variants are what an artifact has. Mixing them would put a question into an
+// identity, and two artifacts reached by different questions would hash apart
 // while being the same bytes.
 //
 // # glibc is not a special case
@@ -66,11 +66,11 @@ type Concrete struct {
 	// silently wrong. Spack carries an `os_compatible` map and it is
 	// DIRECTIONAL — sonoma may reuse monterey's builds and not the reverse —
 	// which is only expressible if the identity says which one it is. An
-	// identity that omitted the platform would let a darwin bottle answer a
+	// identity that omitted the platform would let a darwin artifact answer a
 	// linux pin, and the error would surface as a missing symbol.
 	Platform string
 
-	// Variants are the build options this bottle WAS BUILT WITH: definite,
+	// Variants are the build options this artifact WAS BUILT WITH: definite,
 	// possibly multi-valued, never a constraint. A boolean is ["true"] or
 	// ["false"].
 	Variants Variants
@@ -88,17 +88,17 @@ type Concrete struct {
 	// it, and Spack's package_hash strips comments and docstrings from
 	// package.py before hashing. Digesting the file's bytes instead would
 	// make a reflowed comment rebuild the world: every dependent's hash
-	// changes, every bottle is republished, and nothing about any binary
+	// changes, every artifact is republished, and nothing about any binary
 	// differs. That is not a conservative choice, it is a wrong one — it
 	// spends the fleet's whole build capacity on whitespace.
 	//
 	// So the producer owes this field a digest over the RESOLVED build: the
 	// script after substitution, the environment, the flags. bk computes it;
-	// bottle only carries it, and states the contract here because a field
+	// artifact only carries it, and states the contract here because a field
 	// that merely says "digest" invites the cheap, wrong answer.
 	Recipe string
 
-	// Graft, when set, is the hash of the spec this bottle was produced from
+	// Graft, when set, is the hash of the spec this artifact was produced from
 	// by rewriting references rather than by building.
 	//
 	// ⛔⛔ THE FIELD EXISTS NOW BECAUSE IT CANNOT BE ADDED LATER. A full-closure
@@ -110,9 +110,9 @@ type Concrete struct {
 	// usually less than a minute", and the result is a NEW store item while
 	// the original stays reachable (`guix build bash --no-grafts`).
 	//
-	// That only works if a grafted bottle has an identity of its own, which
+	// That only works if a grafted artifact has an identity of its own, which
 	// means this field is in the canonical form. Adding it after the first
-	// bottle is published would change every hash already issued.
+	// artifact is published would change every hash already issued.
 	//
 	// Guix's restrictions come with it and are not ours to relax: the
 	// replaced and replacing name+version must be the SAME LENGTH (the patch
@@ -134,7 +134,7 @@ type Dep struct {
 	Hash    string
 }
 
-// Variants are the definite build options of a built bottle: name to its
+// Variants are the definite build options of a built artifact: name to its
 // values, sorted. Multi-valued because Spack's are — `languages=c,c++` is one
 // variant with two values, not two variants — and a single-string map would
 // have had to invent an escape for the comma.
@@ -162,7 +162,7 @@ const canonSep = "\x00"
 // without a delimiter would give two builds one: {"ab","c"} and {"a","bc"}
 // hash alike the moment the separator is "". Both are tested.
 //
-// ⛔ AND THE INSTALL PREFIX IS NOT IN IT. $ZPKG_DIR is where a bottle lands,
+// ⛔ AND THE INSTALL PREFIX IS NOT IN IT. $ZPKG_DIR is where an artifact lands,
 // not what it is. Nix states the consequence of getting this wrong: "One
 // cannot copy a store object to a store with a different store directory",
 // and a cache stops being shareable the moment identity depends on where the
@@ -234,7 +234,7 @@ func field(b *strings.Builder, parts ...string) {
 // "/" and is why this is base32 and not something shorter. Spack spends 32
 // characters, conda 7; 16 leaves room for a long version beside it and puts a
 // collision far outside the reach of a registry that holds thousands of
-// bottles, not quintillions.
+// artifacts, not quintillions.
 //
 // It is also long enough and fixed enough to be SCANNED FOR. Nix derives a
 // build's runtime references by looking for "the digest of each input" in the
@@ -252,7 +252,7 @@ var lowerBase32 = base32.StdEncoding.WithPadding(base32.NoPadding)
 // Hash is the spec's address: the first hashLen base32 characters of the
 // SHA-256 of its canonical form.
 //
-// An EMPTY spec hashes to "": a bottle with no platform, no declared
+// An EMPTY spec hashes to "": an artifact with no platform, no declared
 // variants, no recorded closure and no recipe digest is one we know nothing
 // about, and giving it an address would claim knowledge we do not have. That
 // is also what makes every tag published before this existed readable — it
@@ -324,7 +324,7 @@ const variantSep = "-h"
 //
 // A suffix that is not exactly hashLen characters of the hash alphabet is NOT
 // a hash: a version like "1.0-h2" would otherwise read as a truncated one,
-// and that silently changes which bottle a pin means.
+// and that silently changes which artifact a pin means.
 func SplitVariantHash(tag string) (version, hash string) {
 	i := strings.LastIndex(tag, variantSep)
 	if i <= 0 {
@@ -355,7 +355,7 @@ func isVariantHash(s string) bool {
 // --- the request side ------------------------------------------------------
 
 // VariantConstraint is what a USER asks for, which is strictly more than what
-// a bottle has.
+// an artifact has.
 type VariantConstraint struct {
 	// Values the variant must take. For a boolean, ["true"] or ["false"].
 	Values []string
@@ -363,7 +363,7 @@ type VariantConstraint struct {
 	// AT LEAST those values, `fabrics:=verbs,ofi` for EXACTLY those. Without
 	// the distinction "give me a build with ofi" and "give me a build with
 	// ofi and nothing else" are the same request, and one of them gets the
-	// wrong bottle.
+	// wrong artifact.
 	Exact bool
 	// Propagate carries the constraint down to dependencies — Spack's `++`,
 	// `~~` and `==`. It is resolved during concretisation, which is why no
@@ -472,12 +472,12 @@ func splitValues(raw string) []string {
 	return out
 }
 
-// Satisfies reports whether a built bottle's variants answer this request.
+// Satisfies reports whether a built artifact's variants answer this request.
 //
 // ⛔ THE TWO SPELLINGS MEAN DIFFERENT THINGS, which is the whole reason
 // VariantConstraint exists: `=` is a subset test and `:=` an equality. A
 // resolver that treated them alike would hand "built with ofi and verbs" to
-// someone who asked for ofi ALONE — a bottle linked against a fabric library
+// someone who asked for ofi ALONE — an artifact linked against a fabric library
 // their machine does not have.
 func (cs VariantConstraints) Satisfies(have Variants) bool {
 	for name, c := range cs {
@@ -533,7 +533,7 @@ func isVariantName(s string) bool {
 // TASTE. A spec travels as JSON in an OCI annotation, and encoding/json
 // replaces invalid UTF-8 with U+FFFD rather than failing. The value that
 // comes back is then NOT the value that went out, so its hash is not the
-// hash that went out, and a perfectly honest bottle fails its own
+// hash that went out, and a perfectly honest artifact fails its own
 // verification. Caught by a test that put a stray \xff in a variant value
 // and watched the hash change across the wire.
 //

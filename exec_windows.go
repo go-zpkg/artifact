@@ -1,6 +1,6 @@
 //go:build windows
 
-package bottle
+package artifact
 
 import (
 	"errors"

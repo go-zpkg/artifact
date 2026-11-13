@@ -1,4 +1,4 @@
-package bottle
+package artifact
 
 import (
 	"crypto/sha256"
@@ -15,11 +15,11 @@ import (
 //
 // Measured before writing it: the convention `<dir>/<project>/v<version>` was
 // spelled out at NINE call sites — install.go:131, 240, 241, 271, 357,
-// closure.go:278, 532, zpkg.go:2057, 2155 — and read back at none. Two bottles
+// closure.go:278, 532, zpkg.go:2057, 2155 — and read back at none. Two artifacts
 // that differ only in their build options resolve to the same directory, so
 // installing the second one meets the first and the installer refuses:
 //
-//	already holds other content … the bottle carries v3.3.11
+//	already holds other content … the artifact carries v3.3.11
 //
 // That refusal is correct behaviour on a wrong layout. `+cuda` and `~cuda`
 // are not a sequence, there is no newer one, and nothing in the path says
@@ -31,8 +31,8 @@ import (
 //	<dir>/<project>/v3.3.11-habcdefghij012345    THIS build of 3.3.11
 //
 // The bare form is not a default and not a fallback for a hash we could have
-// computed. It is the honest statement that a bottle arrived without a spec
-// annotation — a mirrored bottle, or one built before bk published one — and
+// computed. It is the honest statement that an artifact arrived without a spec
+// annotation — a mirrored artifact, or one built before bk published one — and
 // that nothing on disk can say which build it is. Minting a hash for it would
 // put a claim in the path that no witness supports.
 //
@@ -41,7 +41,7 @@ import (
 // a directory name and a tag suffix cannot drift apart into two spellings of
 // one idea. The round trip is asserted, not assumed.
 
-// StorePrefix returns the directory a bottle occupies in a store.
+// StorePrefix returns the directory an artifact occupies in a store.
 //
 // It is the ONLY place that composes one. Nine inline spellings is nine
 // chances for one of them to forget the variant hash, and a path that forgets
@@ -93,7 +93,7 @@ func StoreDirName(v Ver) string {
 //
 //	the tag's variant hash   the concrete spec: platform, declared variants,
 //	                         resolved closure, recipe plan. What `bk` published.
-//	the content digest       the bottle's own manifest digest. Says "these
+//	the content digest       the artifact's own manifest digest. Says "these
 //	                         exact bytes" and nothing about why.
 //	the source               neither is available: an unverified HTTP dist,
 //	                         which by construction offers no digest to trust.
@@ -106,10 +106,10 @@ func StoreDirName(v Ver) string {
 // guarantee is the same.
 func StoreBuildDirName(v Ver, hash string) string {
 	if hash == "" {
-		// A caller that reached here with nothing is a bug, not a bottle:
+		// A caller that reached here with nothing is a bug, not an artifact:
 		// StoreHash always answers. Fail visibly rather than write a path
 		// that silently rejoins the old shape.
-		panic("bottle: StoreBuildDirName with no hash — the layout has two shapes again")
+		panic("artifact: StoreBuildDirName with no hash — the layout has two shapes again")
 	}
 	return "v" + v.Raw + variantSep + hash
 }
@@ -148,18 +148,18 @@ func hashOf(s string) string {
 // identity (go-zpkg/zbk's spec package) and has to put it in a tag; the
 // installer has to find the matching directory. If each shortened in its own
 // way the two would silently address different things, and the symptom would
-// be "the bottle is not published" for a bottle that is.
+// be "the artifact is not published" for an artifact that is.
 func ShortHash(identity string) string { return hashOf(identity) }
 
 // linkStoreAlias makes `<store>/<project>/v<version>` resolve to one build.
 //
 // ⛔⛔ THIS LINK IS PART OF THE PUBLISHED ABI, WHICH IS WHY IT LIVES IN THE
-// STORE AND NOT IN A VIEW. Measured on a real published bottle —
+// STORE AND NOT IN A VIEW. Measured on a real published artifact —
 // `otool -l` on zlib.net 1.3.2 for darwin/aarch64 gives
 // `name @rpath/zlib.net/v1.3.2/lib/libz.1.dylib` — so every binary linking
 // zlib names that exact path. A store without it breaks them at load time.
 //
-// ⛔ RELATIVE TARGET. A bottle tree is relocatable; an absolute link would be
+// ⛔ RELATIVE TARGET. An artifact tree is relocatable; an absolute link would be
 // the one thing in it that is not, and the whole store is routinely mounted
 // somewhere else (an NFS export, a container rootfs, a staged builder).
 //
@@ -200,7 +200,7 @@ func ShortHash(identity string) string { return hashOf(identity) }
 func LinkView(viewDir, storeDir, project string, v Ver, hash string) error {
 	real := StoreBuildPrefix(storeDir, project, v, hash)
 	if st, err := os.Stat(real); err != nil || !st.IsDir() {
-		return fmt.Errorf("bottle: %s %s build %s is not installed in %s",
+		return fmt.Errorf("artifact: %s %s build %s is not installed in %s",
 			project, v.Raw, hash, storeDir)
 	}
 	abs, err := filepath.Abs(real)
@@ -216,7 +216,7 @@ func LinkView(viewDir, storeDir, project string, v Ver, hash string) error {
 	// by hand — and deleting an installed tree to make room for a symlink is
 	// not something to do quietly.
 	if st, err := os.Lstat(alias); err == nil && st.Mode()&os.ModeSymlink == 0 && st.IsDir() {
-		return fmt.Errorf("bottle: %s is a directory, not a view link — "+
+		return fmt.Errorf("artifact: %s is a directory, not a view link — "+
 			"remove or move it first", alias)
 	}
 	_ = os.Remove(alias)
@@ -261,7 +261,7 @@ func ResolveBuild(dir, project string, v Ver) (string, bool) {
 }
 
 // ParseStoreDirName is the other direction: what a directory in the store
-// says about the bottle inside it.
+// says about the artifact inside it.
 //
 // It reports false for anything that is not a version directory, which
 // includes the `v1` / `v1.2` / `v*` aliases writeVersionLinks leaves beside

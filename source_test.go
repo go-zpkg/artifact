@@ -1,4 +1,4 @@
-package bottle
+package artifact
 
 import (
 	"context"
@@ -15,7 +15,7 @@ import (
 )
 
 // The store is addressed by CONTENT: the sha256 the fetcher already computed
-// becomes the tag, so the digest a bottle's SBOM records IS the address of the
+// becomes the tag, so the digest an artifact's SBOM records IS the address of the
 // bytes it was built from. Nothing has to be named twice or kept in step.
 func TestSourceRoundTrip(t *testing.T) {
 	fr := newFakeRegistry(t, false)

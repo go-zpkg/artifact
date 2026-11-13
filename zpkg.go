@@ -1,4 +1,4 @@
-package bottle
+package artifact
 
 import (
 	"archive/tar"
@@ -42,12 +42,12 @@ import (
 //	ghcr.io/go-zpkg/packages/zlib.net       ABSENT
 //
 // GitHub's container packages are org-scoped and did NOT follow the repository
-// transfer: the repositories all moved, every bottle stayed. So those five
+// transfer: the repositories all moved, every artifact stayed. So those five
 // releases point the whole fleet at an empty registry, and `zpkgx` cannot
 // fetch anything with its defaults — which is what the `FROM scratch, offline`
 // check was reporting in go-zpkg/zpkgx#141 while I read it as a path problem.
 //
-// Renaming a URL did not move what it addresses. The bottles move by COPY,
+// Renaming a URL did not move what it addresses. The artifacts move by COPY,
 // and this line follows them — not the other way round. Until that copy has
 // run and been verified, this is where they are.
 // DefaultDistBase is the same value as DistBase's initial one, as a CONSTANT.
@@ -72,7 +72,7 @@ var (
 	// from upstream, and a list replaces rather than merges. A small curated
 	// overlay can then carry corrected recipes (e.g. a stale
 	// `openssl.org: ^1.1` bumped to a constraint that matches the published
-	// bottles) without forking the whole pantry.
+	// artifacts) without forking the whole pantry.
 	//
 	// This said "consulted BEFORE PantryBase, falling back when the overlay
 	// has no recipe" until #103, and that description outlived the code by
@@ -113,10 +113,10 @@ var (
 	// always on, so every lookup our registry could not answer silently became
 	// a question asked of another project. That was right while this was a
 	// mirror with a gap-filler. It is wrong for a distribution: a project we
-	// do not carry should SAY SO, not resolve to somebody else's bottle.
+	// do not carry should SAY SO, not resolve to somebody else's artifact.
 	//
 	// Measured 2026-11-04 on a one-in-forty sample of the 1907 recipes: of the
-	// bottles published and read, 0% were built here and 100% were mirrored,
+	// artifacts published and read, 0% were built here and 100% were mirrored,
 	// on darwin/aarch64 and linux/x86-64 alike, toolchain included. So the
 	// fallback is not a corner case today — which is exactly why it has to
 	// become a stated choice rather than a built-in assumption.
@@ -131,7 +131,7 @@ var (
 	// completion. See implicitRoots; set from ZPKG_IMPLICIT_ROOTS=none.
 	ImplicitRootsOff = false
 
-	// CacheBase is an OCI registry consulted for the BOTTLE ITSELF before
+	// CacheBase is an OCI registry consulted for the ARTIFACT ITSELF before
 	// DistBase — a pull-through cache next to the builders, so a job does not
 	// fetch llvm.org's ~1.7 GiB across the network again.
 	//
@@ -199,7 +199,7 @@ func applyEnv(get func(string) string) {
 	}
 	// ZPKG_IMPLICIT_ROOTS=none says the MACHINE supplies the implicit system
 	// libraries -- libc, and the gcc runtime when something links it -- so a
-	// closure must not reach for bottles of them. It is named after the
+	// closure must not reach for artifacts of them. It is named after the
 	// function it disables rather than after glibc, because it governs all
 	// three roots and a glibc-shaped name would under-describe two of them.
 	//
@@ -354,7 +354,7 @@ func recipeDoc(project string) (map[string]any, error) {
 	return nil, fmt.Errorf("no recipe for %s in %s or %s", project, PantryOverlay, PantryBase)
 }
 
-// Dir resolves the bottle store (ZPKG_DIR, default ~/.zpkg), expanding the
+// Dir resolves the artifact store (ZPKG_DIR, default ~/.zpkg), expanding the
 // platform placeholders described by [ExpandStorePath].
 //
 // ⛔⛔ `~/.zpkg`, AND IT IS UPSTREAM'S DIRECTORY WE ARE GETTING OUT OF. pkgx
@@ -374,7 +374,7 @@ func recipeDoc(project string) (map[string]any, error) {
 // it has been relabelled.
 //
 // ⛔ NOTHING IS MIGRATED, ON PURPOSE. An existing `~/.pkgx` is pkgx's as much
-// as ours and we cannot tell which bottles in it are whose; moving it would
+// as ours and we cannot tell which artifacts in it are whose; moving it would
 // be taking somebody else's files. A user who wants the old store keeps it
 // with ZPKG_DIR=~/.pkgx, which is one line and says what it means.
 func Dir() string {
@@ -499,7 +499,7 @@ type Ver struct {
 	// siblings rather than a sequence. That is why cmpVer ignores it and
 	// numericKey does not: ordering by it would invent a preference the
 	// registry never expressed, and dropping it from the identity would
-	// collapse two bottles into one — the defect numericKey already carries a
+	// collapse two artifacts into one — the defect numericKey already carries a
 	// comment about.
 	Variant string
 }
@@ -578,7 +578,7 @@ func splitRebuild(s string) (body string, rebuild int) {
 //	1.8.2 satisfies "=1.8.2_1" ? true
 //	1.8.2_1 satisfies "=1.8.2" ? true
 //
-// A lock pinning the rebuilt bottle would therefore have installed the
+// A lock pinning the rebuilt artifact would therefore have installed the
 // un-rebuilt one — the vulnerable one — and said nothing. `satisfies` routes
 // every operator through here, so ordering and exactness are the same fix.
 func cmpVer(a, b Ver) int {
@@ -626,7 +626,7 @@ func cmpVer(a, b Ver) int {
 // A recipe pinning `python.org: '>=3<3.12'` — because it does not work on 3.12
 // and later — was therefore refused 3.11.16, the version it wants, and offered
 // 3.14.7, the one it excludes. 106 recipes in the pantry write a constraint of
-// this shape; none of the ones checked has a bottle built by this factory.
+// this shape; none of the ones checked has an artifact built by this factory.
 //
 // "||" was simply false for everything, so `^16 || ^18 || ^20` matched no
 // nodejs at all.
@@ -820,7 +820,7 @@ func FetchVersions(project string) ([]Ver, error) {
 // catalogue, so build-time deps (e.g. llvm.org, perl.org) may not be published
 // there yet and list zero versions. In that case we fall back to the upstream
 // pkgx dist so dep resolution matches the version `pkgx +<pkg>` installs at build
-// time — the actual bottle *pull* still goes through DistBase unchanged, so this
+// time — the actual artifact *pull* still goes through DistBase unchanged, so this
 // only affects version listing, not the install source.
 func VersionsFor(project, osn, arch string) ([]Ver, error) {
 	vs, _, err := versionsForSourced(project, osn, arch)
@@ -854,7 +854,7 @@ func VersionsForSourced(project, osn, arch string) ([]Ver, bool, error) {
 // The second half of the catalogue's question, and the reason it is this
 // rather than a bare OCIClient.HasPlatform: one version has several
 // spellings and they do not always hold the same platforms — gnu.org/tar
-// has its linux bottles under `1.35` and its darwin ones under `1.35.0`.
+// has its linux artifacts under `1.35` and its darwin ones under `1.35.0`.
 // Asking about one spelling answers about one spelling. This asks about the
 // version.
 //
@@ -964,7 +964,7 @@ func repoAbsent(err error) bool {
 	// this package already holds a non-nil error, so the prose fallback
 	// below — err.Error() — was never reached with nil and the gap never
 	// showed. Exporting it as IsNotPublished puts it in front of callers
-	// who will reasonably ask `if bottle.IsNotPublished(err)` after a call
+	// who will reasonably ask `if artifact.IsNotPublished(err)` after a call
 	// that succeeded, and a predicate that panics on "nothing went wrong"
 	// is a trap rather than an answer.
 	if err == nil {
@@ -1031,7 +1031,7 @@ func httpVersionsFor(base, project, osn, arch string) ([]Ver, error) {
 }
 
 // ociVersionsFor lists a project's versions from an OCI registry (the repo's
-// tags), ascending. The tag list is not per-arch — a version that lacks a bottle
+// tags), ascending. The tag list is not per-arch — a version that lacks an artifact
 // for the requested platform simply fails at download time, mirroring how the
 // static tree 404s a missing per-arch tarball.
 func ociVersionsFor(project string) ([]Ver, error) {
@@ -1068,12 +1068,12 @@ func ociVersionsFor(project string) ([]Ver, error) {
 //
 // Measured on ghcr.io/go-zpkg/packages/fftw.org, whose tags include both:
 // VersionsFor returned 3.3.11_1 only, and `=3.3.11` resolved to nothing at
-// all, though the bottle is published and pullable. A lock pinning a version
+// all, though the artifact is published and pullable. A lock pinning a version
 // therefore STOPPED RESOLVING the day somebody rebuilt it — the reproducibility
 // break is the exact mirror of the one rebuild_test.go was written about, where
-// a pin on the rebuilt bottle was satisfied by the un-rebuilt, vulnerable one.
+// a pin on the rebuilt artifact was satisfied by the un-rebuilt, vulnerable one.
 //
-// A rebuild is a different build of the same sources: a DIFFERENT bottle, with
+// A rebuild is a different build of the same sources: a DIFFERENT artifact, with
 // a different digest, which is the whole reason the counter exists. Two
 // distinct builds need two distinct keys. cmpVer already sorts _1 after the
 // plain tag, so "the newest" still picks the rebuild — this only stops the
@@ -1170,7 +1170,7 @@ func selectVersions(tags []string, wantFlavor string) []Ver {
 // than registry bookkeeping.
 //
 // This matters because ghcr implements no referrers API, so ORAS keeps each
-// bottle's attestations under a fallback tag named `sha256-<digest>`: those tags
+// artifact's attestations under a fallback tag named `sha256-<digest>`: those tags
 // sit in the same listing as the versions. Parsed as versions they became
 // phantom "0" entries — inflating every count, and (worse) making a listing
 // look non-empty so the upstream-dist fallback never engaged for a project we
@@ -1213,7 +1213,7 @@ func PickVersion(project, constraint string) (Ver, error) {
 }
 
 // PickVersionFor is PickVersion for an EXPLICIT pkgx os/arch slug. A project's
-// published version sets differ per platform — a linux/aarch64 bottle can exist
+// published version sets differ per platform — a linux/aarch64 artifact can exist
 // where the darwin one does not — so a host that stages a rootfs for another
 // platform must resolve against that platform's catalogue, not its own.
 func PickVersionFor(project, constraint, osn, arch string) (Ver, error) {
@@ -1259,7 +1259,7 @@ func PickVersionForAllWarn(project string, constraints []string, osn, arch strin
 // ⛔⛔ A COIN FLIP IS NOT A RESOLUTION. Two variants of one version compare
 // EQUAL under cmpVer — deliberately, since a hash is not an order — so a loop
 // that takes "the newest" would return whichever the sort happened to leave
-// last, and the same command would install a different bottle tomorrow. That
+// last, and the same command would install a different artifact tomorrow. That
 // is the failure this repository keeps finding in another costume: an answer
 // that depends on the order a registry listed its tags.
 //
@@ -1299,7 +1299,7 @@ func pickVersionForAll(project string, constraints []string, osn, arch string) (
 	// satisfies a constraint is not necessarily installable for the one being
 	// resolved: a mirror wave that lands one arch publishes a tag the other
 	// arch cannot use. Picking it produced
-	//     install kernel.org/linux-headers 7.2.1: no bottle for
+	//     install kernel.org/linux-headers 7.2.1: no artifact for
 	//     kernel.org/linux-headers v7.2.1 (linux/x86-64): platform not in index
 	// at STAGING time, where the only clue is a version nobody asked for.
 	// Membership is checked lazily, newest-first, so the ordinary case costs one
@@ -1364,9 +1364,9 @@ func pickVersionForAll(project string, constraints []string, osn, arch string) (
 	// both forms were settled by field reports — but a caller that wants to
 	// offer a next step cannot act on prose. This is the COMMON state (567 of
 	// 1940 projects on darwin/aarch64, 2026-10-23), and for one release the
-	// hint that names `pkgs request` could not see it. See NoBottleHereError.
+	// hint that names `pkgs request` could not see it. See NoArtifactHereError.
 	if len(absent) > 0 {
-		return Ver{}, "", &NoBottleHereError{
+		return Ver{}, "", &NoArtifactHereError{
 			Project: project, OS: osn, Arch: arch,
 			Constraints: constraints, Available: vs, Absent: absent,
 		}
@@ -1444,12 +1444,12 @@ func quoteAll(constraints []string) string {
 // trying every spelling the version can be written in.
 //
 // Our registry carries more than one spelling of the same version, and they do
-// not always hold the same platforms: gnu.org/tar has the linux bottles under
+// not always hold the same platforms: gnu.org/tar has the linux artifacts under
 // `1.35` and the darwin ones under `1.35.0`. selectVersions deliberately
 // collapses those to ONE candidate — leaving both would make the pick depend on
 // the registry's listing order, which once installed two glibc trees side by
 // side — so the spelling that wins may be the one that lacks this platform.
-// Checking only it reported the version as unpublished while its bottles were
+// Checking only it reported the version as unpublished while its artifacts were
 // sitting under the other tag:
 //
 //	resolve deps: no version of gnu.org/tar satisfies "*" AND is published
@@ -1480,7 +1480,7 @@ func publishedTagFor(project string, v Ver, osn, arch string) (string, bool, err
 // "26.8.0" is a different release of the software. Until 2026-10-22 this
 // built both, and the consequence was measured on the published registry:
 //
-//	nodejs.org 26.8.1 has no linux/x86-64 bottle; 26.8.0 does.
+//	nodejs.org 26.8.1 has no linux/x86-64 artifact; 26.8.0 does.
 //	publishedTagFor(26.8.1, linux/x86-64) tried "26.8.0", got a hit, and
 //	answered yes — so `bk catalog` recorded 26.8.1 as the version that
 //	platform carries. The published linux/x86-64 catalogue then advertised
@@ -1500,7 +1500,7 @@ func tagSpellings(v Ver) []string {
 	// build it SUPERSEDES.
 	//
 	// PublishedTagFor walks these and asks the registry about each, so a lock
-	// pinning the rebuilt bottle was told "published" on finding the
+	// pinning the rebuilt artifact was told "published" on finding the
 	// un-rebuilt one, and a catalogue would advertise a rebuild that does not
 	// exist. Same defect the non-zero rule below exists for — "26.8.1 must
 	// not suggest 26.8.0" — and the same one rebuild_test.go describes from
@@ -1568,11 +1568,11 @@ func splitComparators(c string) []string {
 // ("^1.2", "~2", ">=1.0", "=1.2.3", "*", or "").
 func (v Ver) Satisfies(constraint string) bool { return v.satisfies(constraint) }
 
-// DownloadBottle fetches the raw compressed bottle tarball for a specific
+// DownloadArtifact fetches the raw compressed artifact tarball for a specific
 // project/version/os/arch, trying .tar.gz then .tar.xz. It returns the bytes
 // and the extension that succeeded (".tar.gz" or ".tar.xz") — for mirror tooling
-// that copies bottles verbatim without extracting them.
-func DownloadBottle(project, ver, osn, arch string) ([]byte, string, error) {
+// that copies artifacts verbatim without extracting them.
+func DownloadArtifact(project, ver, osn, arch string) ([]byte, string, error) {
 	if IsOCI(DistBase) {
 		c, err := ociClientForDist()
 		if err != nil {
@@ -1606,7 +1606,7 @@ func DownloadBottle(project, ver, osn, arch string) ([]byte, string, error) {
 		}
 		resp.Body.Close()
 	}
-	return nil, "", fmt.Errorf("no bottle for %s v%s (%s/%s)", project, ver, osn, arch)
+	return nil, "", fmt.Errorf("no artifact for %s v%s (%s/%s)", project, ver, osn, arch)
 }
 
 // --- a recipe's dependencies and provides -----------------------------------
@@ -2066,30 +2066,30 @@ func sortedKeys(m map[string]string) []string {
 
 // --- download + extract -----------------------------------------------------
 
-// Install downloads and extracts one bottle into pkgxDir (skips if the
+// Install downloads and extracts one artifact into pkgxDir (skips if the
 // versioned prefix already exists), then writes major/minor convenience links.
-// Extraction is atomic — the bottle is unpacked into a temp dir and the
+// Extraction is atomic — the artifact is unpacked into a temp dir and the
 // versioned prefix is renamed into place — so concurrent installs sharing one
 // ZPKG_DIR never observe a half-extracted prefix.
-// Install materialises a bottle for the HOST platform. Use InstallFor to stage
+// Install materialises an artifact for the HOST platform. Use InstallFor to stage
 // a rootfs for another one -- building a linux image from a mac, say.
 func Install(r Resolved, pkgxDir string) (bool, error) {
 	osn, arch := HostSlug()
 	return InstallFor(r, pkgxDir, osn, arch)
 }
 
-// InstallFor materialises a bottle for an EXPLICIT platform. The extracted tree
-// is identical whatever the host: only the bottle fetched differs, so a builder
+// InstallFor materialises an artifact for an EXPLICIT platform. The extracted tree
+// is identical whatever the host: only the artifact fetched differs, so a builder
 // can stage a linux/aarch64 rootfs from a darwin/arm64 machine.
 func InstallFor(r Resolved, pkgxDir, osn, arch string) (bool, error) {
 	// ⛔ THE NAME BUILDS A PATH THAT IS WRITTEN TO, so it is checked here.
 	//
-	// Until now this was safe only by ORDER: fetchBottle below goes through
+	// Until now this was safe only by ORDER: fetchArtifact below goes through
 	// OCIClient.repository, which validates, so a `..` would have failed at
 	// the fetch. But the os.Stat on the next line happens FIRST — and for a
 	// project of `../..` naming a directory that exists, it returns
 	// (false, nil), which this function's contract reads as "already
-	// present". A caller would be told the bottle is installed, having
+	// present". A caller would be told the artifact is installed, having
 	// installed nothing, on the strength of a directory outside the store.
 	//
 	// Resolved is an exported struct with exported fields, so a caller can
@@ -2112,7 +2112,7 @@ func InstallFor(r Resolved, pkgxDir, osn, arch string) (bool, error) {
 	if st, err := os.Stat(prefix); err == nil && st.IsDir() {
 		return false, nil // already present
 	}
-	body, ext, digest, err := fetchBottle(r, osn, arch)
+	body, ext, digest, err := fetchArtifact(r, osn, arch)
 	if err != nil {
 		return false, err
 	}
@@ -2138,16 +2138,16 @@ func InstallFor(r Resolved, pkgxDir, osn, arch string) (bool, error) {
 	if err := os.MkdirAll(filepath.Dir(prefix), 0o755); err != nil {
 		return false, err
 	}
-	// The directory INSIDE the bottle is named after the tag it was published
+	// The directory INSIDE the artifact is named after the tag it was published
 	// under, which is not always how we spell the version: gnu.org/tar is
-	// published as `1.35` for linux and `1.35.0` for darwin, so a bottle pulled
+	// published as `1.35` for linux and `1.35.0` for darwin, so an artifact pulled
 	// from the linux tag unpacks to v1.35 while the resolved version reads
 	// 1.35.0, and the install died with
 	//   rename /pkgx/.tmp-…/gnu.org/tar/v1.35.0 …: no such file or directory
-	// Install under the name the bottle carries — absolute paths baked inside it
+	// Install under the name the artifact carries — absolute paths baked inside it
 	// point there — and link the canonical spelling to it.
 	// ⛔⛔ THE REAL DIRECTORY ALWAYS CARRIES THE HASH. `dest` used to be the
-	// name the BOTTLE carries, which is `v<version>` for almost every bottle
+	// name the ARTIFACT carries, which is `v<version>` for almost every artifact
 	// — so almost every install landed in a directory that said nothing about
 	// WHICH build it was, and a second build of one version had nowhere to go.
 	//
@@ -2169,11 +2169,11 @@ func InstallFor(r Resolved, pkgxDir, osn, arch string) (bool, error) {
 	// without saying which build you mean — which is the defect the hashed
 	// layout exists to end, reintroduced one directory up.
 	//
-	// It was kept for one real reason: published bottles name the version in
+	// It was kept for one real reason: published artifacts name the version in
 	// their own rpaths (`@rpath/zlib.net/v1.3.2/lib/libz.1.dylib`, read with
-	// otool out of a real bottle). That reason expires with the rebuild —
-	// a bottle built with a hashed prefix carries the hash in its own
-	// references — and the bottles that need it are the ones we have decided
+	// otool out of a real artifact). That reason expires with the rebuild —
+	// an artifact built with a hashed prefix carries the hash in its own
+	// references — and the artifacts that need it are the ones we have decided
 	// not to install.
 	//
 	// A per-user or per-image default is NOT this: it is a VIEW, built
@@ -2189,7 +2189,7 @@ func InstallFor(r Resolved, pkgxDir, osn, arch string) (bool, error) {
 //
 // ⛔ "ALREADY INSTALLED" MUST MEAN THE REQUESTED PREFIX IS THERE. This used
 // to answer on the strength of `dest` alone — and `dest` is the directory the
-// BOTTLE carries, which is not always the version that was asked for. A
+// ARTIFACT carries, which is not always the version that was asked for. A
 // rebuild is published as `3.3.11_1` and still unpacks to `v3.3.11`.
 //
 // So installing a rebuild into a store that already held `v3.3.11` renamed
@@ -2207,9 +2207,9 @@ func InstallFor(r Resolved, pkgxDir, osn, arch string) (bool, error) {
 //
 // It does NOT create the alias here. That would serve the OLD content under
 // the new name, which is worse than failing: the caller asked for a rebuild
-// and would silently get the bottle it was meant to supersede.
+// and would silently get the artifact it was meant to supersede.
 // ⛔⛔ THE AMBIGUITY THIS GUARDED IS GONE BY CONSTRUCTION, AND THE HASH IS WHY.
-// bk#386 happened because `dest` was the directory the BOTTLE carries —
+// bk#386 happened because `dest` was the directory the ARTIFACT carries —
 // `v3.3.11` for a rebuild published as `3.3.11_1` — so an occupied `dest`
 // could mean either "somebody installed this" or "somebody installed a
 // DIFFERENT build and yours is still missing". The only way to tell was to
@@ -2235,16 +2235,16 @@ func renameOrExplain(src, dir, project string, v Ver, hash string) (bool, error)
 	return true, nil
 }
 
-// extractedPrefix returns the versioned directory the bottle actually unpacked,
+// extractedPrefix returns the versioned directory the artifact actually unpacked,
 // and whether it differs from the canonical `v<version>` spelling. Preferring
 // the canonical name keeps the ordinary case exact; falling back to the single
-// `v*` directory present handles a bottle published under another spelling of
+// `v*` directory present handles an artifact published under another spelling of
 // the same version. Two candidates is not a case to guess at.
 //
 // ⛔ THIS IS THE ARCHIVE'S LAYOUT, NOT THE STORE'S — DO NOT "FIX" IT TO USE
-// StorePrefix. A bottle's tarball contains `<project>/v<version>/`, with no
+// StorePrefix. An artifact's tarball contains `<project>/v<version>/`, with no
 // variant hash in it: the factory names what it built, and a tarball is the
-// same bytes wherever it is unpacked. The hash belongs to where the bottle
+// same bytes wherever it is unpacked. The hash belongs to where the artifact
 // GOES, which is why the caller extracts to this path and then renames it
 // onto StorePrefix. That rename is the whole mechanism by which two builds of
 // one version can sit side by side without the factory changing at all.
@@ -2273,10 +2273,10 @@ func extractedPrefix(tmp string, r Resolved) (path string, aliased bool) {
 	return filepath.Join(tmp, r.Project, found), true
 }
 
-// verifyPulled enforces the fail-closed signature check on a pulled bottle.
-// EVERY path that brings bottle bytes onto the machine goes through it or
+// verifyPulled enforces the fail-closed signature check on a pulled artifact.
+// EVERY path that brings artifact bytes onto the machine goes through it or
 // through httpDistUnverifiable — the install path used not to, so `pkgx` and
-// `pkgm` happily installed an unsigned bottle with ZPKG_VERIFY=1 while only the
+// `pkgm` happily installed an unsigned artifact with ZPKG_VERIFY=1 while only the
 // mirror tooling checked. A guarantee enforced on one path out of two is not a
 // guarantee.
 //
@@ -2290,13 +2290,13 @@ func verifyPulled(c *OCIClient, project, ver, osn, arch string, data []byte) err
 	return verifyPulledDigest(c, project, ver, osn, arch, "sha256:"+hex.EncodeToString(sum[:]))
 }
 
-// verifyPulledDigest is verifyPulled for a bottle already staged on disk, whose
+// verifyPulledDigest is verifyPulled for an artifact already staged on disk, whose
 // digest was computed as it was written.
 func verifyPulledDigest(c *OCIClient, project, ver, osn, arch, digest string) error {
 	if !VerifyRequired() {
 		return nil
 	}
-	if err := c.VerifyBottleDigest(project, ver, osn, arch, digest); err != nil {
+	if err := c.VerifyArtifactDigest(project, ver, osn, arch, digest); err != nil {
 		return fmt.Errorf("verify %s v%s (%s/%s): %w", project, ver, osn, arch, err)
 	}
 	return nil
@@ -2312,26 +2312,26 @@ func httpDistUnverifiable() error {
 	return fmt.Errorf("signature verification is on by default but ZPKG_DIST=%s (HTTP) has no signatures; use an oci:// dist or set ZPKG_VERIFY=0", DistBase)
 }
 
-// fetchBottle returns the compressed bottle stream, trying .tar.gz then .tar.xz.
-// When DistBase selects the OCI transport it pulls the bottle blob, VERIFIES it
+// fetchArtifact returns the compressed artifact stream, trying .tar.gz then .tar.xz.
+// When DistBase selects the OCI transport it pulls the artifact blob, VERIFIES it
 // and wraps the bytes in a reader, so Install (and thus pkgm/pkgx) works over
 // OCI unchanged.
-// fetchBottle returns the bottle body and the EXTENSION that names its
+// fetchArtifact returns the artifact body and the EXTENSION that names its
 // compression — a string rather than the old isXz bool, because there are now
 // three codecs and a boolean cannot say which.
-// It returns the bottle's content DIGEST alongside the stream, or "" when the
+// It returns the artifact's content DIGEST alongside the stream, or "" when the
 // transport has none.
 //
 // ⛔ THE DIGEST WAS ALREADY COMPUTED AND THROWN AWAY. PullFile hashes the
 // bytes on the way past — that is what the signature is checked against — and
 // this function used to drop it at the return. It is the strongest witness of
-// WHICH build is being installed for a bottle whose tag carries no variant
-// hash, which is every bottle published so far, so the store path needs it.
+// WHICH build is being installed for an artifact whose tag carries no variant
+// hash, which is every artifact published so far, so the store path needs it.
 //
 // An HTTP dist has none: it serves a tarball and `httpDistUnverifiable`
 // already refuses that path unless verification is off. "" says so rather
 // than inventing one.
-func fetchBottle(r Resolved, osn, arch string) (io.ReadCloser, string, string, error) {
+func fetchArtifact(r Resolved, osn, arch string) (io.ReadCloser, string, string, error) {
 	if IsOCI(DistBase) {
 		c, err := ociClientForDist()
 		if err != nil {
@@ -2341,7 +2341,7 @@ func fetchBottle(r Resolved, osn, arch string) (io.ReadCloser, string, string, e
 		// the installed prefix stays v<version> either way.
 		tag := r.Version.tag()
 		// Streamed to DISK, not into a []byte: llvm.org is ~1.7 GiB and making
-		// the biggest bottle the memory floor of every install is what killed a
+		// the biggest artifact the memory floor of every install is what killed a
 		// 2 GiB micro-VM mid-build. The file is removed when the caller closes
 		// it, and the digest computed on the way past is what the signature is
 		// checked against — so the tarball is never read twice either.
@@ -2392,10 +2392,10 @@ func fetchBottle(r Resolved, osn, arch string) (io.ReadCloser, string, string, e
 			return nil, "", "", fmt.Errorf("GET %s: %s", base+ext, resp.Status)
 		}
 	}
-	return nil, "", "", fmt.Errorf("no bottle for %s v%s (%s/%s)", r.Project, r.Version.Raw, osn, arch)
+	return nil, "", "", fmt.Errorf("no artifact for %s v%s (%s/%s)", r.Project, r.Version.Raw, osn, arch)
 }
 
-// untar unpacks a bottle stream into dest. It delegates to the shared Extract
+// untar unpacks an artifact stream into dest. It delegates to the shared Extract
 // (strip == 0), which restores file mtimes, rejects insecure paths with
 // ErrInsecurePath, and reproduces directories, files, symlinks and hard links.
 func untar(r io.Reader, dest string) error {
@@ -2426,11 +2426,11 @@ func untar(r io.Reader, dest string) error {
 // The rule they encoded survives where it is still needed: `writeABILinks`
 // resolves a soname to a build, and the catalogue answers "which versions
 // are installed" from InstalledBuilds.
-// ABIProvidesAnnotation lists the sonames a bottle's shared libraries call
+// ABIProvidesAnnotation lists the sonames an artifact's shared libraries call
 // themselves by, comma-separated and sorted. Written by bk at publish time.
 // Declared in annotations.go and read through Annotation().
 
-// abiAnnotations is a seam: the manifest read that answers what a bottle
+// abiAnnotations is a seam: the manifest read that answers what an artifact
 // provides.
 var abiAnnotations = func(project, tag, osn, arch string) map[string]string {
 	if !IsOCI(DistBase) {
@@ -2447,11 +2447,11 @@ var abiAnnotations = func(project, tag, osn, arch string) map[string]string {
 	return ann
 }
 
-// writeABILinks creates one `abi-<soname>` symlink per ABI the bottle provides,
+// writeABILinks creates one `abi-<soname>` symlink per ABI the artifact provides,
 // beside the v* aliases.
 //
 // v<major> is where a reference is bound at load time, and it holds ONE
-// version. That is what lets a bottle follow a patch upgrade, and it is exactly
+// version. That is what lets an artifact follow a patch upgrade, and it is exactly
 // what breaks when a project changes its ABI INSIDE a major. Measured, both
 // lines installed into one store:
 //
@@ -2470,7 +2470,7 @@ var abiAnnotations = func(project, tag, osn, arch string) map[string]string {
 // file is libz.1.3.2.dylib and its soname is libz.1.dylib, the SYMLINK. Only
 // LC_ID_DYLIB / DT_SONAME answers, which is what bk reads at publish time.
 //
-// A bottle published before that annotation existed gets no abi- links, and
+// An artifact published before that annotation existed gets no abi- links, and
 // everything behaves as it did. This is deliberately inert on its own: what
 // reads the links comes later.
 func writeABILinks(pkgxDir string, r Resolved, osn, arch string) {

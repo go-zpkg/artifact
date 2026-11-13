@@ -1,26 +1,26 @@
-package bottle
+package artifact
 
-// OCI-registry transport for pkgx bottles, backed by the ORAS/CNCF Go library
-// (oras.land/oras-go/v2) — the reference implementation for pulling and pushing
-// OCI artifacts. Pure Go, CGO_ENABLED=0.
+// OCI-registry transport for package artifacts, backed by the ORAS/CNCF Go
+// library (oras.land/oras-go/v2) — the reference implementation for pulling and
+// pushing OCI artifacts. Pure Go, CGO_ENABLED=0.
 //
-// A dist ref beginning with "oci://" (e.g. ZPKG_DIST=oci://ghcr.io/go-zpkg/bottles)
-// selects this transport instead of the static-HTTP tree. Bottles are mapped to
-// OCI artifacts Homebrew-style:
+// A dist ref beginning with "oci://" (e.g. ZPKG_DIST=oci://ghcr.io/go-zpkg/packages)
+// selects this transport instead of the static-HTTP tree. Artifacts are mapped
+// to OCI artifacts Homebrew-style:
 //
 //   - repo   = <oci-base-repo>/<project>            (project lowercased; OCI repos
-//              allow '/' and '.'). e.g. go-zpkg/bottles/openssl.org
+//              allow '/' and '.'). e.g. go-zpkg/packages/openssl.org
 //   - tag    = the version                          (e.g. "1.1.1w")
 //   - the manifest at that tag is an OCI image INDEX whose manifests[] each carry
 //     platform{os,architecture} and point at a per-platform image manifest.
 //   - each per-platform image manifest has a (scratch) config blob + ONE layer =
-//     the bottle tarball (layer mediaType application/vnd.pkgx.bottle.layer.v1.tar+gzip
-//     or +xz).
+//     the artifact tarball (layer mediaType
+//     application/vnd.go-zpkg.artifact.layer.v1.tar+gzip, or +xz, or +zstd).
 //
-// pkgx arch slugs (x86-64 / aarch64) map to OCI/Go names (amd64 / arm64); os
-// names (linux / darwin / windows) are shared. ORAS handles the registry v2
-// wire protocol (blob/manifest CAS) and anonymous/bearer/basic auth (including
-// ghcr.io and Docker Hub token exchange) for us.
+// The arch slugs our pantry writes (x86-64 / aarch64) map to OCI/Go names
+// (amd64 / arm64); os names (linux / darwin / windows) are shared. ORAS handles
+// the registry v2 wire protocol (blob/manifest CAS) and anonymous/bearer/basic
+// auth (including ghcr.io and Docker Hub token exchange) for us.
 
 import (
 	"context"
@@ -58,7 +58,7 @@ import (
 // never agreed. Once we stop promising compatibility with legacy pkgx, there
 // is not even an argument of convenience left.
 //
-// ⛔ WRITE THE NEW ONE, READ BOTH. 42 756 bottles are published carrying the
+// ⛔ WRITE THE NEW ONE, READ BOTH. 42 756 artifacts are published carrying the
 // old types and nothing rewrites a published manifest; a reader that accepted
 // only the new type would make every one of them unreadable the day it
 // shipped. A rename that breaks every install is not a rename.
@@ -67,22 +67,22 @@ import (
 // `legacy…` CONSTANTS HERE. `extForLayer` matches the codec SUFFIX
 // (`tar+zstd`), never the whole string, so it reads both vendor spellings
 // without being told about either; nothing in the read path compares against
-// ArtifactTypeBottle at all. Declaring unused legacy constants would have
+// ArtifactType at all. Declaring unused legacy constants would have
 // looked like a compatibility mechanism while being dead code.
 //
 // What pins it is a test holding the old strings as LITERALS
 // (mediacompat_test.go). A literal cannot be changed in sympathy with the new
 // constant during a tidy-up; a constant can.
 const (
-	MediaBottleLayerGz = "application/vnd.go-zpkg.bottle.layer.v1.tar+gzip"
-	MediaBottleLayerXz = "application/vnd.go-zpkg.bottle.layer.v1.tar+xz"
+	MediaLayerGz = "application/vnd.go-zpkg.artifact.layer.v1.tar+gzip"
+	MediaLayerXz = "application/vnd.go-zpkg.artifact.layer.v1.tar+xz"
 	// +zstd is a media type the OCI image-spec itself defines (unlike, say,
 	// brotli, which has none and would make every generic tool — skopeo, oras,
 	// registry UIs — treat the layer as opaque).
-	MediaBottleLayerZst = "application/vnd.go-zpkg.bottle.layer.v1.tar+zstd"
-	// ArtifactTypeBottle marks a bottle image manifest (its manifest.config
+	MediaLayerZst = "application/vnd.go-zpkg.artifact.layer.v1.tar+zstd"
+	// ArtifactType marks an artifact image manifest (its manifest.config
 	// carries this via ORAS PackManifest v1.1's artifactType).
-	ArtifactTypeBottle = "application/vnd.go-zpkg.bottle"
+	ArtifactType = "application/vnd.go-zpkg.artifact"
 	// dockerManifestList is Docker's media type for a multi-platform index, which
 	// some registries (Docker Hub) return instead of the OCI image index.
 	dockerManifestList = "application/vnd.docker.distribution.manifest.list.v2+json"
@@ -117,8 +117,8 @@ func pkgxArch(arch string) string {
 	}
 }
 
-// extForLayer maps a bottle layer mediaType to a file extension, or "" for a
-// layer (e.g. the config blob) we don't recognise as a bottle tarball.
+// extForLayer maps an artifact layer mediaType to a file extension, or "" for a
+// layer (e.g. the config blob) we don't recognise as an artifact tarball.
 func extForLayer(mt string) string {
 	switch {
 	case strings.HasSuffix(mt, "tar+gzip"), strings.HasSuffix(mt, "tar.gzip"):
@@ -145,11 +145,11 @@ func extForLayer(mt string) string {
 // --- client -----------------------------------------------------------------
 
 // OCIClient talks to an OCI distribution (registry v2) endpoint via ORAS. It is
-// used by the bottle pull path and by the mirror push tool, so the OCI protocol
+// used by the artifact pull path and by the mirror push tool, so the OCI protocol
 // lives in one place (ORAS).
 type OCIClient struct {
 	host      string // registry host[:port]
-	repoBase  string // base repo path within the registry, e.g. "go-zpkg/bottles"
+	repoBase  string // base repo path within the registry, e.g. "go-zpkg/artifacts"
 	plainHTTP bool   // use http:// (localhost/loopback or explicit http scheme)
 	client    *auth.Client
 }
@@ -392,8 +392,8 @@ func (c *OCIClient) Platforms(project, ver string) ([]string, error) {
 	return out, nil
 }
 
-// Pull downloads the bottle tarball for a project/version/os/arch and returns
-// it in MEMORY. Prefer PullFile for anything bottle-sized: llvm.org is ~1.7 GiB
+// Pull downloads the artifact tarball for a project/version/os/arch and returns
+// it in MEMORY. Prefer PullFile for anything artifact-sized: llvm.org is ~1.7 GiB
 // and this makes the biggest package in the catalogue the memory floor of the
 // caller. Kept for callers that genuinely want the bytes.
 func (c *OCIClient) Pull(project, ver, osn, arch string) ([]byte, string, error) {
@@ -409,7 +409,7 @@ func (c *OCIClient) Pull(project, ver, osn, arch string) ([]byte, string, error)
 	return data, ext, nil
 }
 
-// PullFile downloads the bottle tarball for a project/version/os/arch: fetch the
+// PullFile downloads the artifact tarball for a project/version/os/arch: fetch the
 // version-tag manifest (an index, or a single-platform image manifest), pick the
 // platform-matching image manifest, take its single non-config layer, stream the
 // layer blob TO DISK. Returns the staged file (Close removes it) and the
@@ -429,7 +429,7 @@ func (c *OCIClient) PullFile(project, ver, osn, arch string) (*BlobFile, string,
 		if ext == "" {
 			continue
 		}
-		// Resumable: a toolchain bottle can be gigabytes and a cut transfer
+		// Resumable: a toolchain artifact can be gigabytes and a cut transfer
 		// must not throw away what already arrived (see fetchblob.go).
 		f, err := c.fetchBlobFile(ctx, project, l)
 		if err != nil {
@@ -437,14 +437,14 @@ func (c *OCIClient) PullFile(project, ver, osn, arch string) (*BlobFile, string,
 		}
 		return f, ext, nil
 	}
-	return nil, "", fmt.Errorf("no bottle layer for %s v%s (%s/%s)", project, ver, osn, arch)
+	return nil, "", fmt.Errorf("no artifact layer for %s v%s (%s/%s)", project, ver, osn, arch)
 }
 
 // PlatformAnnotations returns the annotations on the per-platform image
 // manifest — the map a publish attaches, e.g. org.go-zpkg.abi.provides.
 //
-// Separate from PullFile on purpose: the cache may serve the bottle, and a
-// mirror's manifest is not the authority on what the bottle DECLARES. This
+// Separate from PullFile on purpose: the cache may serve the artifact, and a
+// mirror's manifest is not the authority on what the artifact DECLARES. This
 // always asks the dist the caller named.
 func (c *OCIClient) PlatformAnnotations(project, ver, osn, arch string) (map[string]string, error) {
 	ctx := context.Background()
@@ -518,7 +518,7 @@ func (c *OCIClient) resolvePlatform(ctx context.Context, repo *remote.Repository
 			}
 		}
 		if pick == nil {
-			return ocispec.Descriptor{}, ocispec.Manifest{}, fmt.Errorf("no bottle for %s v%s (%s/%s): %w", project, ver, osn, arch, errPlatformAbsent)
+			return ocispec.Descriptor{}, ocispec.Manifest{}, fmt.Errorf("no artifact for %s v%s (%s/%s): %w", project, ver, osn, arch, errPlatformAbsent)
 		}
 		manDesc = *pick
 		manBytes, err = orascontent.FetchAll(ctx, repo, *pick)
@@ -533,37 +533,37 @@ func (c *OCIClient) resolvePlatform(ctx context.Context, repo *remote.Repository
 	return manDesc, man, nil
 }
 
-// VerifyBottle checks the cosign-style signatures attached to a pulled bottle as
+// VerifyArtifact checks the cosign-style signatures attached to a pulled artifact as
 // OCI referrers against the configured trust set. It is fail-closed: no
 // signature referrer, malformed ones, or too few that verify (or that do not
 // commit to this tarball) all return an error.
-func (c *OCIClient) VerifyBottle(project, ver, osn, arch string, tarball []byte) error {
+func (c *OCIClient) VerifyArtifact(project, ver, osn, arch string, tarball []byte) error {
 	sum := sha256.Sum256(tarball)
-	return c.VerifyBottleDigest(project, ver, osn, arch, "sha256:"+hex.EncodeToString(sum[:]))
+	return c.VerifyArtifactDigest(project, ver, osn, arch, "sha256:"+hex.EncodeToString(sum[:]))
 }
 
-// VerifyBottleDigest is VerifyBottle for a bottle identified by its DIGEST: the
+// VerifyArtifactDigest is VerifyArtifact for an artifact identified by its DIGEST: the
 // form an install uses, having streamed the tarball to disk and hashed it on
 // the way past.
-func (c *OCIClient) VerifyBottleDigest(project, ver, osn, arch, digest string) error {
+func (c *OCIClient) VerifyArtifactDigest(project, ver, osn, arch, digest string) error {
 	rep, err := c.SignaturesOfDigest(project, ver, osn, arch, digest)
 	if err != nil {
 		return err
 	}
 	if verr := rep.Err(); verr != nil {
-		return fmt.Errorf("bottle: %s v%s (%s/%s): %w", project, ver, osn, arch, verr)
+		return fmt.Errorf("artifact: %s v%s (%s/%s): %w", project, ver, osn, arch, verr)
 	}
 	return nil
 }
 
-// SignaturesOfDigest reports who signed a bottle. Its error is reserved for
+// SignaturesOfDigest reports who signed an artifact. Its error is reserved for
 // not being able to ASK — a registry that would not answer, or a subject
 // carrying more signatures than this will look at. The verdict is the
 // report's: see SignatureReport.Err.
 //
 // ⛔⛔ EVERY SIGNATURE REFERRER IS COLLECTED, NOT THE FIRST ONE. Taking the
 // first was a defect the moment a second signer existed, and a quiet one: the
-// registry decides the order of a referrers listing, so the same bottle would
+// registry decides the order of a referrers listing, so the same artifact would
 // verify or fail depending on which signature it happened to serve first, and
 // the failure would read as tampering. It also made the threshold
 // unimplementable — "both builders signed this" and "one did" were the same
@@ -588,13 +588,13 @@ func (c *OCIClient) SignaturesOfDigest(project, ver, osn, arch, digest string) (
 	}
 	names, untrusted, revoked, err := trust.count(digest, atts)
 	if err != nil {
-		return SignatureReport{}, fmt.Errorf("bottle: %s v%s (%s/%s): %w", project, ver, osn, arch, err)
+		return SignatureReport{}, fmt.Errorf("artifact: %s v%s (%s/%s): %w", project, ver, osn, arch, err)
 	}
 	return SignatureReport{Signers: names, Untrusted: untrusted, Malformed: malformed,
 		Revoked: revoked, Threshold: trust.Threshold}, nil
 }
 
-// SignaturesOfTag reports who signed the bottle published under one tag,
+// SignaturesOfTag reports who signed the artifact published under one tag,
 // WITHOUT downloading the tarball: the digest the signature commits to is the
 // per-platform manifest's layer digest, which the manifest already carries.
 //
@@ -606,21 +606,21 @@ func (c *OCIClient) SignaturesOfTag(project, tag, osn, arch string) (SignatureRe
 }
 
 // ProvenanceOfTag answers both halves of "can I trust this build?" in ONE
-// pass over the bottle's attestations: who signed it, and what built it.
+// pass over the artifact's attestations: who signed it, and what built it.
 //
 // ⛔⛔ THE TWO ARE ONE QUESTION AND MUST COST ONE LISTING. A signature says
 // these bytes are somebody's; it says nothing about what produced them. The
 // builder — `https://github.com/go-zpkg/zbk@v0.64.0`, recorded by the factory
 // in the in-toto statement's runDetails.builder.id — is the other half, and
 // it is NOT in the build's identity: a zbk release must not re-address every
-// bottle in the registry. So the only way to learn it is to read the
+// artifact in the registry. So the only way to learn it is to read the
 // attestation, and a caller that had to ask twice would pay two referrer
 // listings for one screenful.
 //
-// The builder is "" when the bottle carries no provenance, or one this cannot
+// The builder is "" when the artifact carries no provenance, or one this cannot
 // parse. Empty means NOT RECORDED, never "built by nobody", and a caller that
 // prints it must keep that distinction — the registry is still full of
-// bottles published before any of this existed.
+// artifacts published before any of this existed.
 func (c *OCIClient) ProvenanceOfTag(project, tag, osn, arch string) (SignatureReport, string, error) {
 	trust, err := LoadTrustSet()
 	if err != nil {
@@ -636,7 +636,7 @@ func (c *OCIClient) ProvenanceOfTag(project, tag, osn, arch string) (SignatureRe
 		return SignatureReport{}, "", err
 	}
 	if len(man.Layers) == 0 {
-		return SignatureReport{}, "", fmt.Errorf("bottle: %s %s (%s/%s) has no layer to have signed", project, tag, osn, arch)
+		return SignatureReport{}, "", fmt.Errorf("artifact: %s %s (%s/%s) has no layer to have signed", project, tag, osn, arch)
 	}
 	refs, err := c.Referrers(project, desc)
 	if err != nil {
@@ -648,7 +648,7 @@ func (c *OCIClient) ProvenanceOfTag(project, tag, osn, arch string) (SignatureRe
 	}
 	names, untrusted, revoked, err := trust.count(man.Layers[0].Digest.String(), atts)
 	if err != nil {
-		return SignatureReport{}, "", fmt.Errorf("bottle: %s %s (%s/%s): %w", project, tag, osn, arch, err)
+		return SignatureReport{}, "", fmt.Errorf("artifact: %s %s (%s/%s): %w", project, tag, osn, arch, err)
 	}
 	rep := SignatureReport{Signers: names, Untrusted: untrusted, Malformed: malformed,
 		Revoked: revoked, Threshold: trust.Threshold}
@@ -696,14 +696,14 @@ func (c *OCIClient) builderFrom(ctx context.Context, repo *remote.Repository, re
 	return ""
 }
 
-// BottleDigest is the digest of the tarball published under one tag — the
+// ArtifactDigest is the digest of the tarball published under one tag — the
 // thing a signature commits to, read from the per-platform manifest without
-// downloading a byte of the bottle.
+// downloading a byte of the artifact.
 //
-// ⛔ IT IS WHAT A REBUILDER COMPARES AGAINST. "Did I produce the same bottle?"
+// ⛔ IT IS WHAT A REBUILDER COMPARES AGAINST. "Did I produce the same artifact?"
 // has to be answerable before deciding whether to sign, and answerable
 // cheaply enough that asking is the normal thing to do.
-func (c *OCIClient) BottleDigest(project, ver, osn, arch string) (string, error) {
+func (c *OCIClient) ArtifactDigest(project, ver, osn, arch string) (string, error) {
 	ctx := context.Background()
 	repo, err := c.repository(project)
 	if err != nil {
@@ -714,15 +714,15 @@ func (c *OCIClient) BottleDigest(project, ver, osn, arch string) (string, error)
 		return "", err
 	}
 	if len(man.Layers) == 0 {
-		return "", fmt.Errorf("bottle: %s %s (%s/%s) has no layer", project, ver, osn, arch)
+		return "", fmt.Errorf("artifact: %s %s (%s/%s) has no layer", project, ver, osn, arch)
 	}
 	return man.Layers[0].Digest.String(), nil
 }
 
-// AttachReferrer adds one attestation to an ALREADY PUBLISHED bottle, leaving
-// the bottle itself untouched.
+// AttachReferrer adds one attestation to an ALREADY PUBLISHED artifact, leaving
+// the artifact itself untouched.
 //
-// ⛔⛔ A SECOND BUILDER MUST NOT HAVE TO REPUBLISH THE BOTTLE TO VOUCH FOR IT.
+// ⛔⛔ A SECOND BUILDER MUST NOT HAVE TO REPUBLISH THE ARTIFACT TO VOUCH FOR IT.
 // Every other path here pushes a tarball and its attestations together, which
 // is right for the builder who made it and wrong for everyone else: re-pushing
 // is how you end up with two objects where the point was that there is one.
@@ -768,7 +768,7 @@ func (c *OCIClient) signatureAttestations(ctx context.Context, repo *remote.Repo
 			continue
 		}
 		if len(atts)+malformed >= MaxSignatures {
-			return nil, 0, fmt.Errorf("bottle: more than %d signature referrers on %s: refusing", MaxSignatures, project)
+			return nil, 0, fmt.Errorf("artifact: more than %d signature referrers on %s: refusing", MaxSignatures, project)
 		}
 		manBytes, err := orascontent.FetchAll(ctx, repo, refs[i])
 		if err != nil {
@@ -817,7 +817,7 @@ func isIndexMedia(mediaType string, body []byte) bool {
 
 // --- push -------------------------------------------------------------------
 
-// Referrer is an attestation to attach to a bottle's per-platform manifest as an
+// Referrer is an attestation to attach to an artifact's per-platform manifest as an
 // OCI referrer (subject-linked artifact): a CycloneDX/SPDX SBOM, an in-toto SLSA
 // provenance statement, or (later) a cosign signature. ArtifactType classifies
 // the referrer manifest; MediaType is the layer blob's media type (usually the
@@ -831,7 +831,7 @@ type Referrer struct {
 	Annotations map[string]string
 }
 
-// Push publishes one bottle for a project/version/os/arch: it pushes the tarball
+// Push publishes one artifact for a project/version/os/arch: it pushes the tarball
 // as a layer blob, packs a per-platform image manifest (ORAS PackManifest, which
 // also pushes a scratch config blob), then merges the platform into the
 // version-tag image index (fetching any existing index first) and tags it. ext
@@ -853,7 +853,7 @@ func (c *OCIClient) PushWithReferrers(project, ver, osn, arch string, tarball []
 // PushWithReferrersAnnotated is PushWithReferrers plus annotations merged onto
 // the per-platform image manifest — used to carry descriptive metadata such as
 // org.go-zpkg.glibc.version and org.go-zpkg.glibc.min-kernel so glibc-flavored
-// bottles are self-describing.
+// artifacts are self-describing.
 func (c *OCIClient) PushWithReferrersAnnotated(project, ver, osn, arch string, tarball []byte, ext string, refs []Referrer, annotations map[string]string) (ocispec.Descriptor, error) {
 	return c.push(project, ver, osn, arch, tarball, ext, refs, annotations)
 }
@@ -866,12 +866,12 @@ func (c *OCIClient) push(project, ver, osn, arch string, tarball []byte, ext str
 	}
 	// The extension is the source of truth for the codec; the media type is how
 	// a puller learns it without sniffing bytes.
-	layerMedia := MediaBottleLayerGz
+	layerMedia := MediaLayerGz
 	switch ext {
 	case ExtTarXz:
-		layerMedia = MediaBottleLayerXz
+		layerMedia = MediaLayerXz
 	case ExtTarZst:
-		layerMedia = MediaBottleLayerZst
+		layerMedia = MediaLayerZst
 	}
 	layerDesc := orascontent.NewDescriptorFromBytes(layerMedia, tarball)
 	if err := pushIfAbsent(ctx, repo, layerDesc, tarball); err != nil {
@@ -884,7 +884,7 @@ func (c *OCIClient) push(project, ver, osn, arch string, tarball []byte, ext str
 	for k, v := range annotations {
 		manAnn[k] = v
 	}
-	manDesc, err := oras.PackManifest(ctx, repo, oras.PackManifestVersion1_1, ArtifactTypeBottle,
+	manDesc, err := oras.PackManifest(ctx, repo, oras.PackManifestVersion1_1, ArtifactType,
 		oras.PackManifestOptions{
 			Layers:              []ocispec.Descriptor{layerDesc},
 			ManifestAnnotations: manAnn,
@@ -957,7 +957,7 @@ var (
 //	14:18:42.63  ✅ MIRRORED python.org 3.14.7 linux/aarch64
 //	14:18:42.98  ✅ MIRRORED python.org 3.14.7 linux/x86-64
 //
-// and the published index listed only amd64. The arm64 bottle was pushed, its
+// and the published index listed only amd64. The arm64 artifact was pushed, its
 // manifest was fine, and it was simply not in the index — so every install for
 // that platform failed with "platform not in index". The loop below had already
 // run and had already confirmed arm64 was there: the clobber came AFTER, from a
@@ -1063,7 +1063,7 @@ func (c *OCIClient) Referrers(project string, subject ocispec.Descriptor) ([]oci
 }
 
 // pushIfAbsent pushes content only when the registry does not already hold it,
-// so re-pushing an existing bottle is a no-op (and avoids EEXIST on registries
+// so re-pushing an existing artifact is a no-op (and avoids EEXIST on registries
 // that reject duplicate blob PUTs).
 func pushIfAbsent(ctx context.Context, repo *remote.Repository, desc ocispec.Descriptor, data []byte) error {
 	if ok, err := repo.Exists(ctx, desc); err == nil && ok {
@@ -1140,7 +1140,7 @@ func (c *OCIClient) platformManifests(ctx context.Context, repo *remote.Reposito
 			// is restored from the tag below; artifactType and the annotations
 			// live in the manifest BODY, and upsertPlatform replaces a complete
 			// index entry with whatever this returns — so without them an index
-			// stops saying which of its entries are bottles, on every platform
+			// stops saying which of its entries are artifacts, on every platform
 			// except the one being pushed.
 			body, rerr := orascontent.ReadAll(rc, desc)
 			rc.Close()

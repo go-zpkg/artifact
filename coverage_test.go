@@ -1,4 +1,4 @@
-package bottle
+package artifact
 
 // coverage_test.go drives the branches that the feature-oriented tests do not
 // reach on a single host: the Windows / linux OS-specific paths (via the goos /
@@ -333,7 +333,7 @@ func TestNewOCIClientEmptyHost(t *testing.T) {
 func TestOCICredentialCallback(t *testing.T) {
 	fr := newFakeRegistry(t, true) // require "Bearer test-token"
 	defer fr.close()
-	base := fr.base("go-zpkg/bottles")
+	base := fr.base("go-zpkg/artifacts")
 	// A pre-issued OCI_TOKEN is used directly as the bearer; building it via the
 	// env seam sets the Credential callback, which the auth flow then invokes.
 	c, err := newOCIClientEnv(base, func(k string) string {
@@ -353,7 +353,7 @@ func TestOCICredentialCallback(t *testing.T) {
 func TestOCIListTagsPullBadProject(t *testing.T) {
 	fr := newFakeRegistry(t, false)
 	defer fr.close()
-	c, _ := NewOCIClient(fr.base("go-zpkg/bottles"))
+	c, _ := NewOCIClient(fr.base("go-zpkg/artifacts"))
 	bad := "BAD..name/../x"
 	if _, err := c.ListTags(bad); err == nil {
 		t.Error("ListTags should error for a bad project")
@@ -365,7 +365,7 @@ func TestOCIListTagsPullBadProject(t *testing.T) {
 
 // pushSinglePlatformManifest tags ver directly at an image manifest (NOT wrapped
 // in an index) whose single layer has the given media type — used to reach the
-// "layer is not a bottle" / "no bottle layer" branches of Pull.
+// "layer is not an artifact" / "no artifact layer" branches of Pull.
 func pushSinglePlatformManifest(t *testing.T, c *OCIClient, project, ver, layerMedia string, blob []byte) {
 	t.Helper()
 	ctx := context.Background()
@@ -377,7 +377,7 @@ func pushSinglePlatformManifest(t *testing.T, c *OCIClient, project, ver, layerM
 	if err := pushIfAbsent(ctx, repo, ld, blob); err != nil {
 		t.Fatal(err)
 	}
-	md, err := oras.PackManifest(ctx, repo, oras.PackManifestVersion1_1, ArtifactTypeBottle,
+	md, err := oras.PackManifest(ctx, repo, oras.PackManifestVersion1_1, ArtifactType,
 		oras.PackManifestOptions{Layers: []ocispec.Descriptor{ld}})
 	if err != nil {
 		t.Fatal(err)
@@ -387,22 +387,22 @@ func pushSinglePlatformManifest(t *testing.T, c *OCIClient, project, ver, layerM
 	}
 }
 
-func TestOCIPullNoBottleLayer(t *testing.T) {
+func TestOCIPullNoArtifactLayer(t *testing.T) {
 	fr := newFakeRegistry(t, false)
 	defer fr.close()
-	c, _ := NewOCIClient(fr.base("go-zpkg/bottles"))
-	// a single-platform manifest whose only layer is not a recognised bottle.
+	c, _ := NewOCIClient(fr.base("go-zpkg/artifacts"))
+	// a single-platform manifest whose only layer is not a recognised artifact.
 	pushSinglePlatformManifest(t, c, "nolayer.test", "1.0.0", "application/vnd.oci.empty.v1+json", []byte("{}"))
 	if _, _, err := c.Pull("nolayer.test", "1.0.0", "linux", "x86-64"); err == nil ||
-		!strings.Contains(err.Error(), "no bottle layer") {
-		t.Errorf("expected no-bottle-layer error, got %v", err)
+		!strings.Contains(err.Error(), "no artifact layer") {
+		t.Errorf("expected no-artifact-layer error, got %v", err)
 	}
 }
 
 func TestOCIPullLayerFetchError(t *testing.T) {
 	fr := newFakeRegistry(t, false)
 	defer fr.close()
-	c, _ := NewOCIClient(fr.base("go-zpkg/bottles"))
+	c, _ := NewOCIClient(fr.base("go-zpkg/artifacts"))
 	if err := c.Push("layer.fail", "1.0.0", "linux", "x86-64", makeGzTarball("body"), ".tar.gz"); err != nil {
 		t.Fatal(err)
 	}
@@ -419,7 +419,7 @@ func TestOCIPullLayerFetchError(t *testing.T) {
 func TestOCIResolvePlatformReadError(t *testing.T) {
 	fr := newFakeRegistry(t, false)
 	defer fr.close()
-	c, _ := NewOCIClient(fr.base("go-zpkg/bottles"))
+	c, _ := NewOCIClient(fr.base("go-zpkg/artifacts"))
 	if err := c.Push("corrupt.test", "1.0.0", "linux", "x86-64", makeGzTarball("body"), ".tar.gz"); err != nil {
 		t.Fatal(err)
 	}
@@ -433,7 +433,7 @@ func TestOCIResolvePlatformReadError(t *testing.T) {
 func TestOCIUnmarshalErrors(t *testing.T) {
 	fr := newFakeRegistry(t, false)
 	defer fr.close()
-	c, _ := NewOCIClient(fr.base("go-zpkg/bottles"))
+	c, _ := NewOCIClient(fr.base("go-zpkg/artifacts"))
 	repo := c.repoName("bad.json")
 	// index media type + invalid JSON -> the index unmarshal branch.
 	fr.injectManifest(repo, "1.0.0", ocispec.MediaTypeImageIndex, []byte("{not json"))
@@ -447,10 +447,10 @@ func TestOCIUnmarshalErrors(t *testing.T) {
 	}
 }
 
-func TestOCIVerifyBottleSigFetchError(t *testing.T) {
+func TestOCIVerifyArtifactSigFetchError(t *testing.T) {
 	fr := newFakeRegistry(t, false)
 	defer fr.close()
-	c, _ := NewOCIClient(fr.base("go-zpkg/bottles"))
+	c, _ := NewOCIClient(fr.base("go-zpkg/artifacts"))
 	tarball := makeGzTarball("sig-body")
 	// push with a signature referrer whose annotation/payload are well-formed.
 	_, err := c.PushWithReferrers("sigfetch.test", "1.0.0", "linux", "x86-64", tarball, ".tar.gz",
@@ -470,7 +470,7 @@ func TestOCIVerifyBottleSigFetchError(t *testing.T) {
 		}
 		return 0, false
 	}
-	if err := c.VerifyBottle("sigfetch.test", "1.0.0", "linux", "x86-64", tarball); err == nil {
+	if err := c.VerifyArtifact("sigfetch.test", "1.0.0", "linux", "x86-64", tarball); err == nil {
 		t.Error("expected signature-manifest fetch failure")
 	}
 }
@@ -478,7 +478,7 @@ func TestOCIVerifyBottleSigFetchError(t *testing.T) {
 func TestOCIPushLayerFailure(t *testing.T) {
 	fr := newFakeRegistry(t, false)
 	defer fr.close()
-	c, _ := NewOCIClient(fr.base("go-zpkg/bottles"))
+	c, _ := NewOCIClient(fr.base("go-zpkg/artifacts"))
 	// fail every blob upload -> the layer push (and its re-Exists recheck) fail.
 	fr.hook = func(r *http.Request) (int, bool) {
 		_, verb, _ := splitV2(r.URL.Path)
@@ -492,9 +492,9 @@ func TestOCIPushLayerFailure(t *testing.T) {
 func TestOCIPushBlobRaceThenPackFailure(t *testing.T) {
 	fr := newFakeRegistry(t, false)
 	defer fr.close()
-	c, _ := NewOCIClient(fr.base("go-zpkg/bottles"))
+	c, _ := NewOCIClient(fr.base("go-zpkg/artifacts"))
 	tarball := makeGzTarball("racebody")
-	layerMedia := MediaBottleLayerGz
+	layerMedia := MediaLayerGz
 	ld := orascontent.NewDescriptorFromBytes(layerMedia, tarball)
 	// Pre-store the LAYER blob so the post-failure re-Exists finds it, driving the
 	// "a concurrent push raced us" success branch of pushIfAbsent.
@@ -531,11 +531,11 @@ func TestIndexRetryBackoffDefault(t *testing.T) {
 func TestFetchOrNewIndexNonIndexAndBadJSON(t *testing.T) {
 	fr := newFakeRegistry(t, false)
 	defer fr.close()
-	c, _ := NewOCIClient(fr.base("go-zpkg/bottles"))
+	c, _ := NewOCIClient(fr.base("go-zpkg/artifacts"))
 
 	// (a) version tag already points at a plain image manifest (not an index):
 	// fetchOrNewIndex must treat it as absent and start fresh, then Push succeeds.
-	pushSinglePlatformManifest(t, c, "nonidx.test", "1.0.0", MediaBottleLayerGz, makeGzTarball("x"))
+	pushSinglePlatformManifest(t, c, "nonidx.test", "1.0.0", MediaLayerGz, makeGzTarball("x"))
 	if err := c.Push("nonidx.test", "1.0.0", "linux", "x86-64", makeGzTarball("x"), ".tar.gz"); err != nil {
 		t.Fatalf("push over a non-index tag: %v", err)
 	}
@@ -587,13 +587,13 @@ func TestOCIVersionsForClientError(t *testing.T) {
 func TestOCIVersionsForSorted(t *testing.T) {
 	fr := newFakeRegistry(t, false)
 	defer fr.close()
-	c, _ := NewOCIClient(fr.base("go-zpkg/bottles"))
+	c, _ := NewOCIClient(fr.base("go-zpkg/artifacts"))
 	for _, v := range []string{"2.0.0", "1.0.0", "1.5.0"} {
 		if err := c.Push("multi.test", v, "linux", "x86-64", makeGzTarball(v), ".tar.gz"); err != nil {
 			t.Fatal(err)
 		}
 	}
-	withDist(t, fr.base("go-zpkg/bottles"))
+	withDist(t, fr.base("go-zpkg/artifacts"))
 	vs, err := VersionsFor("multi.test", "linux", "x86-64")
 	if err != nil || len(vs) != 3 {
 		t.Fatalf("VersionsFor n=%d err=%v", len(vs), err)
@@ -610,23 +610,23 @@ func TestPickVersionFetchError(t *testing.T) {
 	}
 }
 
-func TestDownloadBottleOCIClientError(t *testing.T) {
+func TestDownloadArtifactOCIClientError(t *testing.T) {
 	withDist(t, "oci://hostonly")
 	t.Setenv("ZPKG_VERIFY", "0")
-	if _, _, err := DownloadBottle("p", "1.0.0", "linux", "x86-64"); err == nil {
+	if _, _, err := DownloadArtifact("p", "1.0.0", "linux", "x86-64"); err == nil {
 		t.Error("expected OCI client error")
 	}
 }
 
-func TestDownloadBottleHTTPGetError(t *testing.T) {
+func TestDownloadArtifactHTTPGetError(t *testing.T) {
 	withDist(t, "http://127.0.0.1:0") // no listener
 	t.Setenv("ZPKG_VERIFY", "0")
-	if _, _, err := DownloadBottle("p", "1.0.0", "linux", "x86-64"); err == nil {
+	if _, _, err := DownloadArtifact("p", "1.0.0", "linux", "x86-64"); err == nil {
 		t.Error("expected HTTP GET (dial) error")
 	}
 }
 
-func TestDownloadBottleHTTPReadError(t *testing.T) {
+func TestDownloadArtifactHTTPReadError(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if strings.HasSuffix(r.URL.Path, ".tar.gz") {
 			w.Header().Set("Content-Length", "4096") // lie: promise more than we send
@@ -639,7 +639,7 @@ func TestDownloadBottleHTTPReadError(t *testing.T) {
 	defer srv.Close()
 	withDist(t, srv.URL)
 	t.Setenv("ZPKG_VERIFY", "0")
-	if _, _, err := DownloadBottle("p", "1.0.0", "linux", "x86-64"); err == nil {
+	if _, _, err := DownloadArtifact("p", "1.0.0", "linux", "x86-64"); err == nil {
 		t.Error("expected body read error on truncated response")
 	}
 }
@@ -724,12 +724,12 @@ func TestATwoComponentVersionProducesOneHashedEntry(t *testing.T) {
 
 // --- install.go / zpkg.go: Install over OCI + failure paths -----------------
 
-func ociGzBottle(t *testing.T, project, ver string, files map[string]string) []byte {
+func ociGzArtifact(t *testing.T, project, ver string, files map[string]string) []byte {
 	t.Helper()
-	return makeBottleGz(t, project, ver, files)
+	return makeArtifactGz(t, project, ver, files)
 }
 
-func ociXzBottle(t *testing.T, project, ver string, files map[string]string) []byte {
+func ociXzArtifact(t *testing.T, project, ver string, files map[string]string) []byte {
 	t.Helper()
 	var buf bytes.Buffer
 	xw, err := xz.NewWriter(&buf)
@@ -749,18 +749,18 @@ func ociXzBottle(t *testing.T, project, ver string, files map[string]string) []b
 }
 
 func TestInstallOverOCIGzAndXz(t *testing.T) {
-	t.Setenv("ZPKG_VERIFY", "0") // transport round-trip on unsigned bottles
+	t.Setenv("ZPKG_VERIFY", "0") // transport round-trip on unsigned artifacts
 	fr := newFakeRegistry(t, false)
 	defer fr.close()
-	c, _ := NewOCIClient(fr.base("go-zpkg/bottles"))
+	c, _ := NewOCIClient(fr.base("go-zpkg/artifacts"))
 	osn, arch := HostSlug()
-	if err := c.Push("gz.pkg", "1.0.0", osn, arch, ociGzBottle(t, "gz.pkg", "1.0.0", map[string]string{"bin/g": "x"}), ".tar.gz"); err != nil {
+	if err := c.Push("gz.pkg", "1.0.0", osn, arch, ociGzArtifact(t, "gz.pkg", "1.0.0", map[string]string{"bin/g": "x"}), ".tar.gz"); err != nil {
 		t.Fatal(err)
 	}
-	if err := c.Push("xz.pkg", "1.0.0", osn, arch, ociXzBottle(t, "xz.pkg", "1.0.0", map[string]string{"bin/x": "y"}), ".tar.xz"); err != nil {
+	if err := c.Push("xz.pkg", "1.0.0", osn, arch, ociXzArtifact(t, "xz.pkg", "1.0.0", map[string]string{"bin/x": "y"}), ".tar.xz"); err != nil {
 		t.Fatal(err)
 	}
-	withDist(t, fr.base("go-zpkg/bottles"))
+	withDist(t, fr.base("go-zpkg/artifacts"))
 	dir := t.TempDir()
 
 	if fresh, err := Install(Resolved{"gz.pkg", ParseVer("1.0.0")}, dir); err != nil || !fresh {
@@ -769,13 +769,13 @@ func TestInstallOverOCIGzAndXz(t *testing.T) {
 	// Through StorePrefix: the store holds `v1.0.0-h<hash>` and nothing else,
 	// so a path composed from the version alone names nothing.
 	if _, err := os.Stat(filepath.Join(StorePrefix(dir, "gz.pkg", ParseVer("1.0.0")), "bin", "g")); err != nil {
-		t.Errorf("gz bottle not extracted: %v", err)
+		t.Errorf("gz artifact not extracted: %v", err)
 	}
 	if fresh, err := Install(Resolved{"xz.pkg", ParseVer("1.0.0")}, dir); err != nil || !fresh {
 		t.Fatalf("xz install fresh=%v err=%v", fresh, err)
 	}
 	if _, err := os.Stat(filepath.Join(StorePrefix(dir, "xz.pkg", ParseVer("1.0.0")), "bin", "x")); err != nil {
-		t.Errorf("xz bottle not extracted: %v", err)
+		t.Errorf("xz artifact not extracted: %v", err)
 	}
 }
 
@@ -786,7 +786,7 @@ func TestInstallOverOCIErrors(t *testing.T) {
 	t.Setenv("ZPKG_VERIFY", "0")
 	fr := newFakeRegistry(t, false)
 	defer fr.close()
-	c, _ := NewOCIClient(fr.base("go-zpkg/bottles"))
+	c, _ := NewOCIClient(fr.base("go-zpkg/artifacts"))
 	osn, arch := HostSlug()
 
 	// a .tar.gz layer whose bytes are not gzip -> gzip.NewReader error.
@@ -812,10 +812,10 @@ func TestInstallOverOCIErrors(t *testing.T) {
 	if err := c.Push("norename.pkg", "1.0.0", osn, arch, nb.Bytes(), ".tar.gz"); err != nil {
 		t.Fatal(err)
 	}
-	if err := c.Push("ok.pkg", "1.0.0", osn, arch, ociGzBottle(t, "ok.pkg", "1.0.0", map[string]string{"bin/o": "x"}), ".tar.gz"); err != nil {
+	if err := c.Push("ok.pkg", "1.0.0", osn, arch, ociGzArtifact(t, "ok.pkg", "1.0.0", map[string]string{"bin/o": "x"}), ".tar.gz"); err != nil {
 		t.Fatal(err)
 	}
-	withDist(t, fr.base("go-zpkg/bottles"))
+	withDist(t, fr.base("go-zpkg/artifacts"))
 
 	if _, err := Install(Resolved{"badgz.pkg", ParseVer("1.0.0")}, t.TempDir()); err == nil {
 		t.Error("expected gzip reader error")
@@ -827,11 +827,11 @@ func TestInstallOverOCIErrors(t *testing.T) {
 		t.Error("expected untar error")
 	}
 	if _, err := Install(Resolved{"norename.pkg", ParseVer("1.0.0")}, t.TempDir()); err == nil {
-		t.Error("expected rename error for a bottle missing its prefix")
+		t.Error("expected rename error for an artifact missing its prefix")
 	}
-	// Pull failure for an unpushed project -> fetchBottle OCI error.
+	// Pull failure for an unpushed project -> fetchArtifact OCI error.
 	if _, err := Install(Resolved{"ghost.pkg", ParseVer("1.0.0")}, t.TempDir()); err == nil {
-		t.Error("expected pull error for an unpushed bottle")
+		t.Error("expected pull error for an unpushed artifact")
 	}
 
 	// pkgxDir under a regular file -> MkdirAll(pkgxDir) error.
@@ -868,18 +868,18 @@ func TestInstallOverOCIErrors(t *testing.T) {
 	}
 }
 
-func TestFetchBottleOCIClientError(t *testing.T) {
+func TestFetchArtifactOCIClientError(t *testing.T) {
 	withDist(t, "oci://hostonly")
-	if _, _, _, err := fetchBottle(Resolved{"a/b", ParseVer("1.0.0")}, "linux", "x86-64"); err == nil {
-		t.Error("expected OCI client error in fetchBottle")
+	if _, _, _, err := fetchArtifact(Resolved{"a/b", ParseVer("1.0.0")}, "linux", "x86-64"); err == nil {
+		t.Error("expected OCI client error in fetchArtifact")
 	}
 }
 
-func TestFetchBottleHTTPGetError(t *testing.T) {
+func TestFetchArtifactHTTPGetError(t *testing.T) {
 	t.Setenv("ZPKG_VERIFY", "0") // transport error path: an HTTP dist is unverifiable by design
 	withDist(t, "http://127.0.0.1:0")
-	if _, _, _, err := fetchBottle(Resolved{"a/b", ParseVer("1.0.0")}, "linux", "x86-64"); err == nil {
-		t.Error("expected HTTP GET (dial) error in fetchBottle")
+	if _, _, _, err := fetchArtifact(Resolved{"a/b", ParseVer("1.0.0")}, "linux", "x86-64"); err == nil {
+		t.Error("expected HTTP GET (dial) error in fetchArtifact")
 	}
 }
 
@@ -1012,7 +1012,7 @@ func TestInstallProvidingSonameInstallSkip(t *testing.T) {
 		"drift.org/lib": {
 			versions:   []string{"1.0.0", "2.0.0"},
 			yaml:       "provides:\n  - bin/x\n",
-			noBottle:   map[string]bool{"2.0.0": true}, // newest install fails -> continue
+			noArtifact: map[string]bool{"2.0.0": true}, // newest install fails -> continue
 			filesByVer: map[string]map[string]string{"1.0.0": {"lib/libx.so.2": "x"}},
 		},
 	})()
@@ -1034,7 +1034,7 @@ func TestCompleteClosureResolveError(t *testing.T) {
 
 func TestCompleteClosureInstallError(t *testing.T) {
 	defer fakeServer(t, map[string]fakePkg{
-		"x/y": {versions: []string{"1.0.0"}, yaml: "provides:\n  - bin/y\n", noBottle: map[string]bool{"1.0.0": true}},
+		"x/y": {versions: []string{"1.0.0"}, yaml: "provides:\n  - bin/y\n", noArtifact: map[string]bool{"1.0.0": true}},
 	})()
 	if _, err := CompleteClosure(map[string]string{"x/y": "*"}, t.TempDir()); err == nil {
 		t.Error("expected install error")
@@ -1046,8 +1046,8 @@ func TestCompleteClosureImplicitInstallError(t *testing.T) {
 	defer fakeServer(t, map[string]fakePkg{
 		"acme.org/tool": {versions: []string{"1.0.0"}, yaml: "provides:\n  - bin/tool\n",
 			files: map[string]string{"bin/tool": string(minimalELF([]string{"libc.so.6"}))}},
-		// glibc resolves but has no installable bottle -> implicit install fails.
-		"gnu.org/glibc": {versions: []string{"2.44.0"}, yaml: "provides:\n  - bin/ld\n", noBottle: map[string]bool{"2.44.0": true}},
+		// glibc resolves but has no installable artifact -> implicit install fails.
+		"gnu.org/glibc": {versions: []string{"2.44.0"}, yaml: "provides:\n  - bin/ld\n", noArtifact: map[string]bool{"2.44.0": true}},
 	})()
 	if _, err := CompleteClosure(map[string]string{"acme.org/tool": "*"}, t.TempDir()); err == nil {
 		t.Error("expected implicit-root install error")
@@ -1086,7 +1086,7 @@ func TestCompleteClosureLinuxFull(t *testing.T) {
 		"gnu.org/gcc":           {versions: []string{"14.0.0"}, yaml: "provides:\n  - bin/gcc\n", files: map[string]string{"lib/libgomp.so.1": "x"}},
 		"zlib.net":              {versions: []string{"1.3.1"}, yaml: "provides:\n  - bin/z\n", files: map[string]string{"lib/libz.so.1": "x"}},
 		"sourceware.org/bzip2":  {versions: []string{"1.0.8"}, yaml: "provides:\n  - bin/bz\n", files: map[string]string{"lib/libbz2.so.1": "x"}},
-		// ncurses ships BOTH needed sonames from one bottle -> the second soname
+		// ncurses ships BOTH needed sonames from one artifact -> the second soname
 		// resolves to an already-installed version (the dedup-by-version skip).
 		"invisible-island.net/ncurses": {versions: []string{"6.5.0"}, yaml: "provides:\n  - bin/nc\n", files: map[string]string{"lib/libncurses.so.6": "x", "lib/libncursesw.so.6": "x"}},
 	})()

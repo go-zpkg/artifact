@@ -1,4 +1,4 @@
-package bottle
+package artifact
 
 import (
 	"os"
@@ -51,7 +51,7 @@ func TestFlattenEnvIgnoresAWasip1Block(t *testing.T) {
 	}
 }
 
-// TestResolveBinPathWasm: a wasip1/wasm bottle ships bin/<name>.wasm while the
+// TestResolveBinPathWasm: a wasip1/wasm artifact ships bin/<name>.wasm while the
 // recipe's `provides: bin/<name>` stays extension-free, as with windows .exe.
 func TestResolveBinPathWasm(t *testing.T) {
 	for _, host := range []string{"wasip1", "js"} {
@@ -85,7 +85,7 @@ func TestResolveBinPathWasm(t *testing.T) {
 }
 
 // TestOCIPlatformForWasip1 pins the registry-side spelling: a wasip1/wasm
-// bottle is published with OCI platform os=wasip1, architecture=wasm, the
+// artifact is published with OCI platform os=wasip1, architecture=wasm, the
 // convention Docker+Wasm and the CNCF wasm-oci-artifact use. wasm is not
 // renamed in either direction (only x86-64/aarch64 are).
 func TestOCIPlatformForWasip1(t *testing.T) {

@@ -1,4 +1,4 @@
-package bottle
+package artifact
 
 import (
 	"strings"
@@ -10,10 +10,10 @@ import (
 // A catalogue is a list of names, and a list of names is what a person then
 // TYPES. That is the whole reason this test exists.
 //
-// FetchCatalog was the one path that brought bottle bytes onto a machine
+// FetchCatalog was the one path that brought artifact bytes onto a machine
 // without the fail-closed check — under a comment, at verifyPulled, saying
 // that EVERY such path went through it. Someone able to serve a forged
-// catalogue cannot make the install path accept an unsigned bottle; what
+// catalogue cannot make the install path accept an unsigned artifact; what
 // they can do is decide what `<TAB>` offers, and a near-miss name at the
 // prompt is the whole of a typosquat.
 //
@@ -21,7 +21,7 @@ import (
 // that only shows the refusal also passes when FetchCatalog is broken
 // outright, and one that only shows the signed fetch also passes when
 // nothing is checked at all.
-func TestACatalogueIsVerifiedLikeAnyOtherBottle(t *testing.T) {
+func TestACatalogueIsVerifiedLikeAnyOtherArtifact(t *testing.T) {
 	kp, err := sign.Generate()
 	if err != nil {
 		t.Fatal(err)
@@ -32,7 +32,7 @@ func TestACatalogueIsVerifiedLikeAnyOtherBottle(t *testing.T) {
 
 	fr := newFakeRegistry(t, false)
 	defer fr.close()
-	c, err := NewOCIClient(fr.base("go-zpkg/bottles"))
+	c, err := NewOCIClient(fr.base("go-zpkg/artifacts"))
 	if err != nil {
 		t.Fatal(err)
 	}

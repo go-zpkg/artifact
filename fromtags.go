@@ -1,4 +1,4 @@
-package bottle
+package artifact
 
 // VersionsFromTags turns a registry tag listing into the versions a client
 // on THIS machine would consider, **oldest first** — so the last is the
@@ -40,7 +40,7 @@ func VersionsFromTags(tags []string) []Ver {
 
 // RegistryTag is the tag to pull this version from.
 //
-// ⛔ IT IS NOT ALWAYS Raw. A flavoured bottle's version is "2.44" and its
+// ⛔ IT IS NOT ALWAYS Raw. A flavoured artifact's version is "2.44" and its
 // tag is "2.44-glibc2.27.0", so a caller that took `Raw` and asked the
 // registry for it would be told the platform is not in the index — a
 // sentence that reads as "we do not publish that for you" and means "I

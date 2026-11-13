@@ -1,4 +1,4 @@
-package bottle
+package artifact
 
 import (
 	"debug/elf"
@@ -10,11 +10,11 @@ import (
 	"strings"
 )
 
-// The "implicit system" shared libraries: bottles link them but never declare
+// The "implicit system" shared libraries: artifacts link them but never declare
 // them as pkgx dependencies, because pkgx historically assumes the host libc /
 // toolchain runtime. On a `FROM scratch` image there is no host, so the
-// installer must supply them from pkgx bottles too. Each group maps to the
-// bottle that provides it.
+// installer must supply them from pkgx artifacts too. Each group maps to the
+// artifact that provides it.
 var (
 	glibcSonames = []string{
 		"libc.so", "libm.so", "libpthread.so", "libdl.so", "librt.so",
@@ -47,7 +47,7 @@ var (
 // provides it, for the common libraries that packages link but frequently do
 // NOT declare in their package.yml dependencies (compression, text, tls…).
 // package.yml runtime graphs are incomplete; on FROM scratch the closure must
-// be complete, so we resolve the gap from the bottles' own DT_NEEDED.
+// be complete, so we resolve the gap from the artifacts' own DT_NEEDED.
 var sonameProject = map[string]string{
 	"libz":         "zlib.net",
 	"libbz2":       "sourceware.org/bzip2",
@@ -89,7 +89,7 @@ var sonameProject = map[string]string{
 	// pulling all of systemd (200+ binaries) just for libudev.so.1.
 	"libudev": "github.com/eudev-project/eudev",
 	// From the second sovereign generation, and each one CHECKED against an
-	// installed bottle rather than recalled: `ls ~/.zpkg/gnu.org/gettext/*/lib`
+	// installed artifact rather than recalled: `ls ~/.zpkg/gnu.org/gettext/*/lib`
 	// lists libtextstyle in five versions, and ncurses' ships libpanel and
 	// libpanelw beside libncurses. gnu.org/bison died on the first of them —
 	//   bison: error while loading shared libraries: libtextstyle.so.0
@@ -185,14 +185,14 @@ func SonameProviders() []string {
 }
 
 // implicitRoots inspects a set of NEEDED sonames and returns the extra pkgx
-// bottles required to satisfy the implicit system libraries on a scratch image.
+// artifacts required to satisfy the implicit system libraries on a scratch image.
 // glibc is always included on linux (every dynamic ELF needs the loader+libc).
 //
 // ImplicitRootsOff turns the whole thing off, for the one case where the
 // premise in that sentence is false: a BOOTSTRAP host, where the machine has a
-// libc and the registry has no bottle of one yet. On linux/s390x the effect is
+// libc and the registry has no artifact of one yet. On linux/s390x the effect is
 // total rather than partial -- glibc is added unconditionally, so installing
-// ANY bottle fails before it starts, including one this factory has just built
+// ANY artifact fails before it starts, including one this factory has just built
 // and published:
 //
 //	pkgx: GET .../gnu.org/glibc/linux/s390x/versions.txt: Not Found
@@ -200,7 +200,7 @@ func SonameProviders() []string {
 //
 // It is off by default and must stay a deliberate act. A closure assembled
 // this way is complete only against THIS machine: the whole point of pulling
-// glibc is that a scratch image has none, and a bottle built under it owes its
+// glibc is that a scratch image has none, and an artifact built under it owes its
 // libc to the host.
 func implicitRoots(needed map[string]bool) map[string]string {
 	if ImplicitRootsOff {
@@ -223,13 +223,13 @@ func implicitRoots(needed map[string]bool) map[string]string {
 }
 
 // hostProvidedSonames are libraries that come from the MACHINE and never from a
-// bottle.
+// artifact.
 //
 // A GPU driver's userspace half is versioned in lockstep with the kernel module
 // it talks to, and is installed by whoever installed the driver. Shipping a copy
 // would be wrong even where it is allowed — a mismatched libcuda and kernel
 // module do not work together — and NVIDIA's is not redistributable anyway. The
-// cudart bottle carries lib/stubs/libcuda.so purely so that a LINK succeeds; the
+// cudart artifact carries lib/stubs/libcuda.so purely so that a LINK succeeds; the
 // real library is resolved at run time, and on a machine with no GPU the module
 // that needs it declines to load, which is the correct outcome rather than a
 // failure.
@@ -305,7 +305,7 @@ func prefixesOf(closure []Resolved, dir string) []string {
 //
 // Six warnings, on a closure that already held every one of those files. The
 // map was never the problem — these are glibc's own modules and no entry
-// could name a better provider than the bottle already installed.
+// could name a better provider than the artifact already installed.
 //
 // A walk, not a deeper glob. The depth that was wrong here would be wrong
 // again at the next project that nests its libs, and a number chosen to fit
@@ -330,7 +330,7 @@ func availableSonames(prefixes []string) map[string]bool {
 }
 
 // CompleteClosure resolves a package's declared closure, installs it, then
-// iteratively reads the bottles' ELF DT_NEEDED and pulls whatever bottle
+// iteratively reads the artifacts' ELF DT_NEEDED and pulls whatever artifact
 // provides each unsatisfied soname — the implicit glibc/gcc system libraries
 // and the common undeclared libraries (libz, libbz2, ncurses…) that
 // package.yml graphs omit — until every NEEDED soname is satisfied. This makes
@@ -350,7 +350,7 @@ func CompleteClosure(roots map[string]string, dir string) ([]Resolved, error) {
 // OF SIX. `bk unresolved` reads every reference in an installed closure
 // and reports the ones the store cannot answer; wired into CI as
 // sonames.yml it found 967 unresolvable references over 259 of the 1407
-// bottled projects on linux/x86-64 (2026-10-24). The other five platforms
+// packaged projects on linux/x86-64 (2026-10-24). The other five platforms
 // had never been asked, because this function resolved and installed for
 // the host and nothing else could be said honestly.
 //
@@ -387,7 +387,7 @@ func CompleteClosureFor(roots map[string]string, dir, osn, arch string) ([]Resol
 }
 
 // completeELF is the repair for a format that binds by SONAME: read every
-// DT_NEEDED, and pull whatever bottle provides a soname nothing in the closure
+// DT_NEEDED, and pull whatever artifact provides a soname nothing in the closure
 // offers. Two versions of one project may both be installed — the dedup below
 // is on project@version, not project — because each ships a different soname
 // and both lib directories sit on LD_LIBRARY_PATH.
@@ -440,7 +440,7 @@ func completeELF(closure []Resolved, dir, osn, arch string) ([]Resolved, error) 
 		// NOT just the latest release, because a soname carries an ABI version
 		// and a newer release may have bumped it (e.g. libxml2 2.15 ships
 		// libxml2.so.16, but a binary linked against libxml2.so.2 needs a 2.x
-		// bottle; likewise openssl 3 ships libssl.so.3, not libssl.so.1.1).
+		// artifact; likewise openssl 3 ships libssl.so.3, not libssl.so.1.1).
 		for soname := range needed {
 			if provided[soname] || triedSoname[soname] || isImplicitSoname(soname) {
 				continue
@@ -454,7 +454,7 @@ func completeELF(closure []Resolved, dir, osn, arch string) ([]Resolved, error) 
 			if isHostProvidedSoname(soname) {
 				// Said once, and said as what it is: a fact about where this
 				// library comes from, not a gap in the closure.
-				warn("%s comes from the machine's GPU driver rather than from a bottle; "+
+				warn("%s comes from the machine's GPU driver rather than from an artifact; "+
 					"what needs it will load only where a driver is installed", soname)
 				continue
 			}
@@ -480,7 +480,7 @@ func completeELF(closure []Resolved, dir, osn, arch string) ([]Resolved, error) 
 	return closure, nil
 }
 
-// provideSoname installs the bottle that provides soname, or says why it could
+// provideSoname installs the artifact that provides soname, or says why it could
 // not. ok=false means the closure stays INCOMPLETE — and an incomplete closure
 // does not fail here: it fails later, when the binary starts and reports
 // "<soname>: cannot open shared object file" with nothing pointing back at the
@@ -509,10 +509,10 @@ func provideSoname(soname, dir, osn, arch string) (Resolved, bool) {
 }
 
 // installProvidingSoname installs the newest available version of project whose
-// bottle actually provides the exact soname, trying newest→oldest, and returns
-// that matching bottle. ok is false if no examined version ships the soname.
+// artifact actually provides the exact soname, trying newest→oldest, and returns
+// that matching artifact. ok is false if no examined version ships the soname.
 // Sonames carry an ABI version a project's latest release may have moved past,
-// so "latest" is not always the right bottle for a specific soname.
+// so "latest" is not always the right artifact for a specific soname.
 func installProvidingSoname(project, soname, dir, osn, arch string) (Resolved, bool, error) {
 	vs, err := FetchVersions(project)
 	if err != nil {
@@ -527,7 +527,7 @@ func installProvidingSoname(project, soname, dir, osn, arch string) (Resolved, b
 		tried++
 		r := Resolved{project, v}
 		if _, err := InstallFor(r, dir, osn, arch); err != nil {
-			continue // no bottle for this version/platform — try the next one
+			continue // no artifact for this version/platform — try the next one
 		}
 		prefix := StorePrefix(dir, r.Project, r.Version)
 		if availableSonames([]string{prefix})[soname] {

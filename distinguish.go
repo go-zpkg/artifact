@@ -1,4 +1,4 @@
-package bottle
+package artifact
 
 import (
 	"fmt"
@@ -25,7 +25,7 @@ import (
 //
 // The result is parallel to the input: one line per spec, "" for a spec that
 // records nothing. A caller must say so rather than printing an empty cell —
-// see the note zpkgs prints for a bottle published before identities existed.
+// see the note zpkgs prints for an artifact published before identities existed.
 func Distinguish(specs []Concrete) []string {
 	out := make([]string, len(specs))
 	if len(specs) == 0 {

@@ -1,4 +1,4 @@
-package bottle
+package artifact
 
 import (
 	"slices"
@@ -25,7 +25,7 @@ func raws(vs []Ver) []string {
 //
 // Measured on ghcr.io/go-zpkg/packages/fftw.org, which publishes both tags:
 // VersionsFor returned 3.3.11_1 alone, so `=3.3.11` resolved to NOTHING while
-// the bottle sat in the registry, pullable. Rebuilding a bottle silently broke
+// the artifact sat in the registry, pullable. Rebuilding an artifact silently broke
 // every lock that pinned the version it rebuilt.
 func TestARebuildDoesNotHideTheVersionItRebuilds(t *testing.T) {
 	got := raws(selectVersions([]string{"3.3.10", "3.3.11", "3.3.11_1"}, ""))
@@ -42,7 +42,7 @@ func TestARebuildDoesNotHideTheVersionItRebuilds(t *testing.T) {
 	}
 }
 
-// Several rebuilds of one version are several bottles, and each is pinnable.
+// Several rebuilds of one version are several artifacts, and each is pinnable.
 func TestEveryRebuildOfAVersionSurvives(t *testing.T) {
 	got := raws(selectVersions([]string{"1.8.2", "1.8.2_1", "1.8.2_2"}, ""))
 	if len(got) != 3 {
@@ -66,7 +66,7 @@ func TestTwoSpellingsOfOneBuildStillCollapse(t *testing.T) {
 	}
 }
 
-// The identity itself, stated directly: equal keys mean "the same bottle".
+// The identity itself, stated directly: equal keys mean "the same artifact".
 func TestNumericKeySeparatesBuildsAndJoinsSpellings(t *testing.T) {
 	for _, c := range []struct {
 		a, b string

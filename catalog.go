@@ -1,4 +1,4 @@
-package bottle
+package artifact
 
 import (
 	"archive/tar"
@@ -29,11 +29,11 @@ import (
 // pkgx-native equivalent of a local index is an artefact in the registry
 // itself.
 //
-// # A CATALOGUE IS AN ORDINARY BOTTLE
+// # A CATALOGUE IS AN ORDINARY ARTIFACT
 //
 // The same move `members` made for sets: rather than a second kind of
 // artefact with its own publishing, signing and mirroring, the catalogue is
-// pushed through the path a bottle takes. It is therefore signed, attested,
+// pushed through the path an artifact takes. It is therefore signed, attested,
 // cached by the pull-through registry and verified on install by everything
 // that already does those things — and a scratch image gets it in ONE pull,
 // with no registry API beyond the one it already uses to fetch packages.
@@ -464,7 +464,7 @@ func (c *Catalog) Age(now time.Time) string {
 // MarshalCatalog renders a catalogue deterministically: projects sorted,
 // versions and platforms sorted within each.
 //
-// Deterministic because the artefact is signed and attested like a bottle,
+// Deterministic because the artefact is signed and attested like an artifact,
 // and a catalogue whose bytes moved for no reason would make every rebuild
 // look like a change — the same argument the lock makes for sorting its pins.
 func MarshalCatalog(c Catalog) ([]byte, error) {
@@ -568,7 +568,7 @@ func UnmarshalCatalog(b []byte) (Catalog, error) {
 
 // CatalogProjectName is the reserved project the catalogue is published
 // under. A project name rather than a special path, because that is what
-// makes it an ordinary bottle.
+// makes it an ordinary artifact.
 //
 // ⛔⛔ THIS NAME ADDRESSES A PUBLISHED ARTEFACT, AND THE RENAME MOVED THE NAME
 // WITHOUT MOVING THE ARTEFACT. The go-pkgx → go-zpkg pass (#192) rewrote it
@@ -599,12 +599,12 @@ const CatalogProjectName = "go-pkgx.dev/catalog"
 // things to garbage-collect.
 const CatalogVersion = "1"
 
-// CatalogTarball packs a catalogue into the shape a bottle layer has: a
+// CatalogTarball packs a catalogue into the shape an artifact layer has: a
 // gzipped tar holding one file, `catalog.json`.
 //
 // A real tar, not gzipped JSON wearing a tar media type. The manifest says
 // `…layer.tar+gzip` and a reader that believes it — `tar tzf`, or any tool
-// that unpacks a bottle — must not be lied to for the sake of fifteen lines.
+// that unpacks an artifact — must not be lied to for the sake of fifteen lines.
 func CatalogTarball(c Catalog) ([]byte, error) {
 	body, err := MarshalCatalog(c)
 	if err != nil {
@@ -654,7 +654,7 @@ func CatalogFromTarball(b []byte) (Catalog, error) {
 			continue
 		}
 		// Bounded. A catalogue is a list of names; anything the size of a
-		// bottle in this slot is not one, and reading it into memory because
+		// artifact in this slot is not one, and reading it into memory because
 		// the tar said to is how a reader becomes the attack.
 		body, err := io.ReadAll(io.LimitReader(tr, CatalogMaxBytes+1))
 		if err != nil {
@@ -673,12 +673,12 @@ const (
 	CatalogFileName = "catalog.json"
 	// CatalogMaxBytes bounds what a reader will take from that file. The
 	// whole pkgx pantry is ~1900 projects; 32 MiB is two orders of magnitude
-	// of headroom and still refuses a bottle-sized surprise.
+	// of headroom and still refuses an artifact-sized surprise.
 	CatalogMaxBytes = 32 << 20
 )
 
 // PublishCatalog pushes a catalogue for ONE platform, through the path a
-// bottle takes.
+// artifact takes.
 //
 // Per platform, and that is not an accident of the signature. What is
 // available differs by architecture — the s390x lane has a fraction of what
@@ -697,22 +697,22 @@ func PublishCatalog(c *OCIClient, cat Catalog, osn, arch string) error {
 //
 // # WHY A LIST OF NAMES NEEDS A SIGNATURE
 //
-// This was the one path that brought bottle bytes onto a machine without
-// the fail-closed check every other bottle gets — which is precisely what
+// This was the one path that brought artifact bytes onto a machine without
+// the fail-closed check every other artifact gets — which is precisely what
 // the comment above verifyPulled promised could not happen. It was missed
 // because a catalogue "is only a list of names", and that is the wrong way
 // round: a list of names is what a person then TYPES.
 //
 // Someone able to serve a forged catalogue — a compromised mirror, or a
 // ZPKG_DIST pointed somewhere by a script — cannot make the install path
-// accept an unsigned bottle, because that path still verifies. What they
+// accept an unsigned artifact, because that path still verifies. What they
 // can do is decide what `<TAB>` offers, and a near-miss name offered at the
 // prompt is the whole of a typosquat. The attack is on the reader, not on
 // the installer, and the signature is the only thing that answers it.
 //
-// It also matters MORE than for an ordinary bottle now, not less: since
+// It also matters MORE than for an ordinary artifact now, not less: since
 // the catalogue became a file on disk, it is fetched once and then read by
-// every completion for days. A bottle is verified each time it is pulled;
+// every completion for days. An artifact is verified each time it is pulled;
 // this one is verified once and trusted thereafter.
 func FetchCatalog(c *OCIClient, osn, arch string) (Catalog, error) {
 	b, _, err := c.Pull(CatalogProjectName, CatalogVersion, osn, arch)

@@ -1,6 +1,6 @@
 //go:build js
 
-package bottle
+package artifact
 
 import (
 	"context"
@@ -24,7 +24,7 @@ func memBlobFixture(t *testing.T, body []byte) (*OCIClient, ocispec.Descriptor) 
 	}))
 	t.Cleanup(srv.Close)
 	sum := sha256.Sum256(body)
-	c, err := NewOCIClient("oci://" + strings.TrimPrefix(srv.URL, "http://") + "/go-zpkg/bottles")
+	c, err := NewOCIClient("oci://" + strings.TrimPrefix(srv.URL, "http://") + "/go-zpkg/artifacts")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -35,11 +35,11 @@ func memBlobFixture(t *testing.T, body []byte) (*OCIClient, ocispec.Descriptor) 
 }
 
 // TestMemoryStagingServesTheBlob: a browser has no filesystem, and the disk
-// staging says so plainly — "temp file: open /tmp/bottle-blob-…: not
+// staging says so plainly — "temp file: open /tmp/artifact-blob-…: not
 // implemented on js". Here the blob is held in memory instead, and everything
 // downstream (digest, extraction, signature) is unchanged.
 func TestMemoryStagingServesTheBlob(t *testing.T) {
-	body := []byte(strings.Repeat("bottle-bytes ", 512))
+	body := []byte(strings.Repeat("artifact-bytes ", 512))
 	c, desc := memBlobFixture(t, body)
 
 	f, err := c.fetchBlobFile(context.Background(), "lib.org", desc)
@@ -78,7 +78,7 @@ func TestMemoryStagingRejectsAWrongDigest(t *testing.T) {
 }
 
 // TestMemoryStagingRejectsAShortBody: a truncated transfer must not become a
-// valid-looking bottle.
+// valid-looking artifact.
 func TestMemoryStagingRejectsAShortBody(t *testing.T) {
 	body := []byte("full body here")
 	c, desc := memBlobFixture(t, body)

@@ -1,4 +1,4 @@
-package bottle
+package artifact
 
 import (
 	"strings"
@@ -86,7 +86,7 @@ func TestUnsatisfiableConstraintNamesTheVersionsItHas(t *testing.T) {
 // wrong, so the clause is omitted rather than filled with "any version".
 func TestNoConstraintOmitsTheSatisfiesClause(t *testing.T) {
 	fr := newFakeRegistry(t, false)
-	base := fr.base("go-zpkg/bottles")
+	base := fr.base("go-zpkg/artifacts")
 	old := DistBase
 	DistBase = base
 	resetOCICache()
@@ -125,7 +125,7 @@ func TestNoConstraintOmitsTheSatisfiesClause(t *testing.T) {
 // quoted. Without this, removing the clause unconditionally would pass.
 func TestAConstraintIsStillQuotedInTheMessage(t *testing.T) {
 	fr := newFakeRegistry(t, false)
-	base := fr.base("go-zpkg/bottles")
+	base := fr.base("go-zpkg/artifacts")
 	old := DistBase
 	DistBase = base
 	resetOCICache()
@@ -189,7 +189,7 @@ func TestNoVersionsAndNoConstraintSaysSo(t *testing.T) {
 // would trade one blind spot for another.
 func TestAnAbsentRepositorySaysSoRatherThanTheTransportError(t *testing.T) {
 	fr := newFakeRegistry(t, false)
-	base := fr.base("go-zpkg/bottles")
+	base := fr.base("go-zpkg/artifacts")
 	old := DistBase
 	DistBase = base
 	resetOCICache()

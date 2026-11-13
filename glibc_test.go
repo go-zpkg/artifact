@@ -1,4 +1,4 @@
-package bottle
+package artifact
 
 import (
 	"errors"
@@ -60,7 +60,7 @@ func withGlibcVersions(t *testing.T, versions ...string) {
 }
 
 // withMinKernels stubs the registry annotation lookup: version → floor
-// ("" = the bottle records no floor).
+// ("" = the artifact records no floor).
 func withMinKernels(t *testing.T, floors map[string]string) {
 	t.Helper()
 	old := glibcMinKernelOf
@@ -252,7 +252,7 @@ func TestGlibcMinKernelOf(t *testing.T) {
 	t.Run("published glibc", func(t *testing.T) {
 		fr := newFakeRegistry(t, false)
 		defer fr.close()
-		withDist(t, fr.base("go-zpkg/bottles"))
+		withDist(t, fr.base("go-zpkg/artifacts"))
 		c, err := NewOCIClient(DistBase)
 		if err != nil {
 			t.Fatal(err)
@@ -277,7 +277,7 @@ func TestGlibcMinKernelOf(t *testing.T) {
 func TestOCIClientAnnotations(t *testing.T) {
 	fr := newFakeRegistry(t, false)
 	defer fr.close()
-	c, err := NewOCIClient(fr.base("go-zpkg/bottles"))
+	c, err := NewOCIClient(fr.base("go-zpkg/artifacts"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -294,7 +294,7 @@ func TestOCIClientAnnotations(t *testing.T) {
 func TestOCIVersionsSkipFlavoredTags(t *testing.T) {
 	fr := newFakeRegistry(t, false)
 	defer fr.close()
-	withDist(t, fr.base("go-zpkg/bottles"))
+	withDist(t, fr.base("go-zpkg/artifacts"))
 	c, err := NewOCIClient(DistBase)
 	if err != nil {
 		t.Fatal(err)
@@ -321,7 +321,7 @@ func TestOCIVersionsSkipFlavoredTags(t *testing.T) {
 }
 
 // TestOCIVersionsSkipReferrerTags: ghcr has no referrers API, so ORAS parks each
-// bottle's attestations under a `sha256-<digest>` TAG. Those must never be read
+// artifact's attestations under a `sha256-<digest>` TAG. Those must never be read
 // as versions — they inflated every listing with phantom "0" entries and, by
 // making the listing look non-empty, defeated the upstream fallback for a
 // project we had published only some versions of (measured live: gnu.org/gcc/
@@ -329,7 +329,7 @@ func TestOCIVersionsSkipFlavoredTags(t *testing.T) {
 func TestOCIVersionsSkipReferrerTags(t *testing.T) {
 	fr := newFakeRegistry(t, false)
 	defer fr.close()
-	withDist(t, fr.base("go-zpkg/bottles"))
+	withDist(t, fr.base("go-zpkg/artifacts"))
 	c, err := NewOCIClient(DistBase)
 	if err != nil {
 		t.Fatal(err)
@@ -475,7 +475,7 @@ func TestFlavoredTagSelection(t *testing.T) {
 			withGlibcEnv(t, map[string]string{"ZPKG_GLIBC": tc.pin})
 			fr := newFakeRegistry(t, false)
 			defer fr.close()
-			withDist(t, fr.base("go-zpkg/bottles"))
+			withDist(t, fr.base("go-zpkg/artifacts"))
 			c, err := NewOCIClient(DistBase)
 			if err != nil {
 				t.Fatal(err)

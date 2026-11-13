@@ -1,6 +1,6 @@
 //go:build js
 
-package bottle
+package artifact
 
 // The browser half of the wasm story. It lives under `js` alone because what it
 // tests does: shortAcceptTransport and the Accept cap exist to satisfy the CORS

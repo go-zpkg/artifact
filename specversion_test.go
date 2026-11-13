@@ -1,4 +1,4 @@
-package bottle
+package artifact
 
 import (
 	"encoding/json"
@@ -11,8 +11,8 @@ import (
 // carrying a new identity-bearing field parses cleanly as a v1 spec that
 // happens to lack it.
 //
-// The bottle is not installed either way, because VerifySpec recomputes the
-// hash and a dropped field moves it. But the message would be "the bottle
+// The artifact is not installed either way, because VerifySpec recomputes the
+// hash and a dropped field moves it. But the message would be "the artifact
 // does not match its own description", which reads as tampering and sends
 // its reader hunting an attacker. This is the test that keeps the true
 // message — "published by a newer release" — reachable.

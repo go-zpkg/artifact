@@ -1,4 +1,4 @@
-package bottle
+package artifact
 
 import (
 	"errors"
@@ -150,7 +150,7 @@ func TestParseServiceRefuses(t *testing.T) {
 
 // ⛔ THE READER EVERY INSTALLED CLIENT CARRIES MUST NOT BREAK ON THE BLOCK.
 //
-// HCLToMap and recipeDoc are the code bottle v0.43.0 shipped, unchanged here,
+// HCLToMap and recipeDoc are the code artifact v0.43.0 shipped, unchanged here,
 // so this is that reader's behaviour: a recipe with one service block reads
 // as the same recipe — same dependencies, same provides — as without it,
 // through the whole consumer path (overlay over HTTP, merged over the base).

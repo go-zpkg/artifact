@@ -1,4 +1,4 @@
-package bottle
+package artifact
 
 import "testing"
 
@@ -8,9 +8,9 @@ import "testing"
 //
 //	"linux" / "wasm"
 //
-// A consumer asking the registry for linux/wasm bottles gets nothing, forever,
+// A consumer asking the registry for linux/wasm artifacts gets nothing, forever,
 // with no hint as to why. The two hosts also stay distinct: a WASI guest and a
-// browser import different things, so a module built for one is not a bottle
+// browser import different things, so a module built for one is not an artifact
 // for the other.
 func TestOsSlugNamesTheWasmHosts(t *testing.T) {
 	for _, tc := range []struct{ goos, want string }{
@@ -21,7 +21,7 @@ func TestOsSlugNamesTheWasmHosts(t *testing.T) {
 		{"linux", "linux"},
 		// A BSD is NAMED, not approximated. "An exotic unix is closer to linux
 		// than to nothing" was the old reading, and it is wrong in the one way
-		// that matters: a linux bottle on FreeBSD does not load. Nothing is a
+		// that matters: a linux artifact on FreeBSD does not load. Nothing is a
 		// refusal you can act on; almost-right is an ELF that fails at the
 		// first exec, having been chosen by a resolution that said yes.
 		{"freebsd", "freebsd"},

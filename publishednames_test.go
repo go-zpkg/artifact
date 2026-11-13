@@ -1,4 +1,4 @@
-package bottle
+package artifact
 
 import "testing"
 
@@ -49,7 +49,7 @@ func TestANameThatAddressesSomethingPublishedCannotChangeSilently(t *testing.T) 
 			distBaseAtInit,
 			// The org here is a DEPLOYMENT FACT and not our name: GitHub's
 			// container packages are org-scoped and did not follow the
-			// repository transfer, so every bottle is still here.
+			// repository transfer, so every artifact is still here.
 			"oci://ghcr.io/go-pkgx/packages",
 		},
 	} {

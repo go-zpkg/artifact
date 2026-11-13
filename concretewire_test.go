@@ -1,4 +1,4 @@
-package bottle
+package artifact
 
 import (
 	"strings"
@@ -20,7 +20,7 @@ func sampleSpec() Concrete {
 // The spec survives the wire unchanged — and "unchanged" is tested by the
 // HASH, not by comparing fields: the hash is what identity means, so a round
 // trip that preserved every field but reordered a value list would pass a
-// field comparison and still be a different bottle.
+// field comparison and still be a different artifact.
 func TestSpecRoundTrips(t *testing.T) {
 	want := sampleSpec()
 	got, err := UnmarshalSpec(MarshalSpec(want))
@@ -57,7 +57,7 @@ func TestMarshalSurvivesAwkwardBytes(t *testing.T) {
 // ⛔⛔ INVALID UTF-8 IS REFUSED AT THE DOOR, BECAUSE THE WIRE CANNOT CARRY IT.
 // encoding/json replaces invalid UTF-8 with U+FFFD rather than failing, so
 // the value that comes back is not the value that went out, its hash is not
-// the hash that went out, and a perfectly honest bottle fails its own
+// the hash that went out, and a perfectly honest artifact fails its own
 // verification. Found by putting a stray \xff in a variant value and watching
 // the hash change across the wire.
 //
@@ -81,7 +81,7 @@ func TestInvalidUTF8IsRefusedBecauseTheWireCannotCarryIt(t *testing.T) {
 }
 
 // An empty spec marshals to something a manifest can carry without claiming
-// anything: the bottles published before this existed are not described, and
+// anything: the artifacts published before this existed are not described, and
 // saying so is the truth about all 1371 of them.
 func TestAnEmptySpecCarriesNoClaim(t *testing.T) {
 	got, err := UnmarshalSpec(MarshalSpec(Concrete{}))
@@ -96,7 +96,7 @@ func TestAnEmptySpecCarriesNoClaim(t *testing.T) {
 // ⛔⛔ A SPEC THAT DOES NOT HASH TO ITS OWN ADDRESS IS A CLAIM, NOT A
 // DESCRIPTION. Both halves come from the publisher — the tag says -h<hash>,
 // the annotation says what that hash is of — so reading the second without
-// checking it against the first lets a bottle tagged as the plain build
+// checking it against the first lets an artifact tagged as the plain build
 // describe itself as the CUDA one, or the reverse. The reverse is the one
 // that matters: the lie points at "this is the build you asked for".
 func TestASpecThatDisagreesWithItsTagIsRefused(t *testing.T) {
@@ -131,12 +131,12 @@ func TestAVariantCannotBeSwappedUnderItsHash(t *testing.T) {
 	without.Variants = Variants{"cuda": {"false"}, "fabrics": {"ofi", "verbs"}}
 
 	if _, err := VerifySpec(MarshalSpec(without), withCuda.Hash()); err == nil {
-		t.Fatal("a ~cuda bottle passed as the +cuda one")
+		t.Fatal("a ~cuda artifact passed as the +cuda one")
 	}
 }
 
 // A tag with no hash makes no claim, so there is nothing to verify against.
-// That is every bottle in the registry today, and refusing them would be
+// That is every artifact in the registry today, and refusing them would be
 // refusing the whole pantry.
 func TestAnUnhashedTagLeavesTheSpecUnverified(t *testing.T) {
 	got, err := VerifySpec(MarshalSpec(sampleSpec()), "")
@@ -149,7 +149,7 @@ func TestAnUnhashedTagLeavesTheSpecUnverified(t *testing.T) {
 }
 
 // ⛔ MALFORMED JSON IS AN ERROR ABOUT THE ANNOTATION, named, rather than an
-// empty spec that would read as "this bottle declares no variants" — which
+// empty spec that would read as "this artifact declares no variants" — which
 // is a statement, and a false one.
 func TestMalformedAnnotation(t *testing.T) {
 	for _, bad := range []string{"", "{", "not json", "[]", `{"variants":"no"}`} {
@@ -193,7 +193,7 @@ func TestAnAnnotationCannotForgeAnotherSpecsHash(t *testing.T) {
 func TestSpecOfReadsAndVerifies(t *testing.T) {
 	fr := newFakeRegistry(t, false)
 	defer fr.close()
-	withDist(t, fr.base("go-zpkg/bottles"))
+	withDist(t, fr.base("go-zpkg/artifacts"))
 	c, err := NewOCIClient(DistBase)
 	if err != nil {
 		t.Fatal(err)
@@ -216,12 +216,12 @@ func TestSpecOfReadsAndVerifies(t *testing.T) {
 	}
 }
 
-// ⛔⛔ AND A BOTTLE TAGGED AS ONE BUILD WHILE DESCRIBING ANOTHER IS REFUSED
+// ⛔⛔ AND A ARTIFACT TAGGED AS ONE BUILD WHILE DESCRIBING ANOTHER IS REFUSED
 // AT THE REGISTRY, which is where the lie would actually arrive.
 func TestSpecOfRefusesATagThatDisagrees(t *testing.T) {
 	fr := newFakeRegistry(t, false)
 	defer fr.close()
-	withDist(t, fr.base("go-zpkg/bottles"))
+	withDist(t, fr.base("go-zpkg/artifacts"))
 	c, err := NewOCIClient(DistBase)
 	if err != nil {
 		t.Fatal(err)
@@ -239,7 +239,7 @@ func TestSpecOfRefusesATagThatDisagrees(t *testing.T) {
 
 	_, ok, err := c.SpecOf("liar.test", tag, "linux", "x86-64")
 	if err == nil {
-		t.Fatal("a bottle passed while describing a different build")
+		t.Fatal("an artifact passed while describing a different build")
 	}
 	if ok {
 		t.Error("a refused spec was reported as present")
@@ -249,14 +249,14 @@ func TestSpecOfRefusesATagThatDisagrees(t *testing.T) {
 	}
 }
 
-// ⛔ A BOTTLE WITH NO SPEC IS NOT AN ERROR. That is every bottle published
+// ⛔ A ARTIFACT WITH NO SPEC IS NOT AN ERROR. That is every artifact published
 // before this existed, and "we do not know what options this was built with"
 // is the truth about all of them — reporting it as a fault would refuse the
 // whole registry.
-func TestSpecOfOnABottleWithoutOne(t *testing.T) {
+func TestSpecOfOnAArtifactWithoutOne(t *testing.T) {
 	fr := newFakeRegistry(t, false)
 	defer fr.close()
-	withDist(t, fr.base("go-zpkg/bottles"))
+	withDist(t, fr.base("go-zpkg/artifacts"))
 	c, err := NewOCIClient(DistBase)
 	if err != nil {
 		t.Fatal(err)
@@ -270,7 +270,7 @@ func TestSpecOfOnABottleWithoutOne(t *testing.T) {
 		t.Fatalf("SpecOf = %v", err)
 	}
 	if ok || !spec.IsZero() {
-		t.Errorf("an undescribed bottle reported a spec: ok=%v %+v", ok, spec)
+		t.Errorf("an undescribed artifact reported a spec: ok=%v %+v", ok, spec)
 	}
 	// An unpublished version is a real lookup failure, not a silent absence.
 	if _, _, err := c.SpecOf("plain.test", "9.9.9", "linux", "x86-64"); err == nil {

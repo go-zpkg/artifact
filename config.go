@@ -1,4 +1,4 @@
-package bottle
+package artifact
 
 // config.go loads user defaults for the go-zpkg tools from ~/.zpkg/config.hcl2.
 //

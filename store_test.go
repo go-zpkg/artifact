@@ -1,4 +1,4 @@
-package bottle
+package artifact
 
 import (
 	"os"
@@ -33,7 +33,7 @@ func storeFixture(t *testing.T) string {
 	// VERSION-SHAPED ON PURPOSE. The obvious fixture — `.local/tmp/junk` —
 	// does not discriminate: nothing under it looks like a version, so the
 	// scan finds nothing there whether the skip exists or not, and mutating
-	// the skip away leaves the suite green. A half-downloaded bottle in the
+	// the skip away leaves the suite green. A half-downloaded artifact in the
 	// staging tree looks exactly like this.
 	write(filepath.Join(dir, ".local", "tmp", "v9.9", "bin", "half-downloaded"), 9999)
 	// The aliases. All three point at the same tree.

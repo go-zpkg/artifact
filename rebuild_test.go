@@ -1,4 +1,4 @@
-package bottle
+package artifact
 
 import (
 	"sort"
@@ -14,16 +14,16 @@ import (
 //	1.8.2   satisfies "=1.8.2_1" ? true
 //	1.8.2_1 satisfies "=1.8.2"   ? true
 //
-// A lock pinning the REBUILT bottle would therefore have installed the
+// A lock pinning the REBUILT artifact would therefore have installed the
 // un-rebuilt one — the vulnerable one, since a rebuild is what a toolchain
 // security fix produces — and said nothing. Writing such a tag before fixing
 // this would have shipped exactly that.
 func TestARebuildIsNotTheSameVersion(t *testing.T) {
 	if ParseVer("1.8.2").Satisfies("=1.8.2_1") {
-		t.Error("the un-rebuilt bottle satisfies an exact pin on the rebuild")
+		t.Error("the un-rebuilt artifact satisfies an exact pin on the rebuild")
 	}
 	if ParseVer("1.8.2_1").Satisfies("=1.8.2") {
-		t.Error("the rebuilt bottle satisfies an exact pin on the original")
+		t.Error("the rebuilt artifact satisfies an exact pin on the original")
 	}
 	// And each still matches itself, without which the two above would pass
 	// on a comparator that matched nothing.

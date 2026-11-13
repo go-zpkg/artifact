@@ -1,4 +1,4 @@
-package bottle
+package artifact
 
 import (
 	"fmt"
@@ -8,7 +8,7 @@ import (
 )
 
 // StorePlatformFile is the name of the marker a store carries saying which
-// platform its bottles were built for.
+// platform its artifacts were built for.
 // ⛔ `.zpkg-platform`: this file is OURS, written by our installer into our
 // store, and upstream pkgx writes nothing of the kind. Named after upstream
 // it would claim a convention that is not theirs — and a store shared with
@@ -64,7 +64,7 @@ func StorePlatform(dir string) (osn, arch string, ok bool) {
 	return o, a, true
 }
 
-// CheckStorePlatform says whether a store holds bottles for the platform about
+// CheckStorePlatform says whether a store holds artifacts for the platform about
 // to use it.
 //
 // ⛔ THE FAILURE IT REPLACES IS `Exec format error`, WITH NO EXPLANATION. A
@@ -83,6 +83,6 @@ func CheckStorePlatform(dir, osn, arch string) error {
 	if !ok || (have == osn && haveArch == arch) {
 		return nil
 	}
-	return fmt.Errorf("store %s holds %s/%s bottles and this is %s/%s — one store cannot hold two architectures; give the platform a place in the path, e.g. ZPKG_DIR=%s/{platform}",
+	return fmt.Errorf("store %s holds %s/%s artifacts and this is %s/%s — one store cannot hold two architectures; give the platform a place in the path, e.g. ZPKG_DIR=%s/{platform}",
 		dir, have, haveArch, osn, arch, filepath.Dir(dir))
 }

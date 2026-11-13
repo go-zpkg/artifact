@@ -1,9 +1,9 @@
-// Copyright (c) 2026, the go-zpkg/bottle authors
+// Copyright (c) 2026, the go-zpkg/artifact authors
 // All rights reserved.
 //
 // SPDX-License-Identifier: BSD-3-Clause
 
-package bottle
+package artifact
 
 import (
 	"archive/tar"
@@ -412,7 +412,7 @@ func TestExtractDoesNotWriteThroughAnEarlierSymlink(t *testing.T) {
 // at the same name. Opening the path ELOOPs; unlinking first does not.
 //
 // Measured on real artefacts — invisible-island.net/ncurses 6.6.0 for
-// linux/x86-64 would not unpack at all, while the aarch64 bottle of the same
+// linux/x86-64 would not unpack at all, while the aarch64 artifact of the same
 // version did.
 func TestExtractReplacesALoopingSymlink(t *testing.T) {
 	skipOnWASI(t, wasiNoSymlink)

@@ -1,6 +1,6 @@
 //go:build !js
 
-package bottle
+package artifact
 
 import (
 	"crypto/tls"
@@ -13,7 +13,7 @@ import (
 func NewHTTPClient() *http.Client {
 	pool := CertPool()
 	// NO whole-request Timeout: it caps a transfer by TOTAL elapsed time, which
-	// kills a healthy but slow download of a large bottle (llvm.org and gcc are
+	// kills a healthy but slow download of a large artifact (llvm.org and gcc are
 	// ~1 GB; five minutes is not enough on a modest link, and the failure looks
 	// like "context deadline exceeded" rather than "too slow"). What must be
 	// bounded is a STALL, so the connection setup and the response headers get
@@ -29,7 +29,7 @@ func NewHTTPClient() *http.Client {
 				// HTTP/1.1 deliberately (a custom TLSClientConfig already opts
 				// out of automatic HTTP/2): forcing h2 made ghcr abort a ~1 GB
 				// blob mid-stream with "stream error … PROTOCOL_ERROR", and a
-				// bottle pull has nothing to gain from multiplexing.
+				// artifact pull has nothing to gain from multiplexing.
 			},
 		},
 	}

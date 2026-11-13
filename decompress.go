@@ -1,4 +1,4 @@
-package bottle
+package artifact
 
 import (
 	"compress/gzip"
@@ -9,7 +9,7 @@ import (
 	"github.com/klauspost/compress/zstd"
 )
 
-// maxXzDictionary bounds the window an .xz bottle may make the decoder keep:
+// maxXzDictionary bounds the window an .xz artifact may make the decoder keep:
 // 256 MiB, go-compressions/xz's own default, stated here so the bound is
 // readable (xz -9 uses 64 MiB). The window grows with the decoded data, never
 // from the dictionary size a header declares, so this caps what real data can
@@ -17,16 +17,16 @@ import (
 // that satisfies errors.Is(err, xz.ErrTooLarge).
 const maxXzDictionary = 256 << 20
 
-// Decompressor wraps a bottle body in the decoder its extension names, and
+// Decompressor wraps an artifact body in the decoder its extension names, and
 // returns a close function for the decoders that hold resources.
 //
-// A bottle's compression is not a detail the installer may guess: a reader that
+// An artifact's compression is not a detail the installer may guess: a reader that
 // assumes gzip and meets zstd fails with "invalid header", which reads like a
 // corrupt download rather than a format it was never taught. Every extension we
 // have ever published is handled here, and an unknown one says so by name.
 //
 // All three decoders stream, which matters now that the pull stages the tarball
-// on disk: nothing here holds a bottle in memory.
+// on disk: nothing here holds an artifact in memory.
 func Decompressor(ext string, body io.Reader) (io.Reader, func(), error) {
 	switch ext {
 	case ExtTarZst:
@@ -50,7 +50,7 @@ func Decompressor(ext string, body io.Reader) (io.Reader, func(), error) {
 		}
 		return g, func() { g.Close() }, nil
 	default:
-		return nil, nil, fmt.Errorf("bottle: unknown compression %q", ext)
+		return nil, nil, fmt.Errorf("artifact: unknown compression %q", ext)
 	}
 }
 

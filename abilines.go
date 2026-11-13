@@ -1,4 +1,4 @@
-package bottle
+package artifact
 
 import (
 	"fmt"
@@ -31,7 +31,7 @@ var pickOne = PickVersionForAll
 // versions that ship the SAME soname are a genuine conflict and stay refused,
 // because whichever the loader reached first would silently be wrong.
 //
-// A version whose bottle declares no sonames at all is treated as unknown, not
+// A version whose artifact declares no sonames at all is treated as unknown, not
 // as empty: it is skipped and the refusal stands. Guessing here would produce
 // exactly the failure the whole mechanism exists to prevent.
 //

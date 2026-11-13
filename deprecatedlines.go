@@ -1,4 +1,4 @@
-package bottle
+package artifact
 
 // The end-of-life release lines this library knows about, and the day they
 // were measured.
@@ -44,7 +44,7 @@ const KnownDeprecatedAsOf = "2026-11-01"
 //
 // Only openssl so far, and deliberately: this list changes what a constraint
 // resolves to across the whole fleet, so each project earns its place by a
-// measurement rather than by a sweep. go-zpkg/bottle#179 moves the judgement
+// measurement rather than by a sweep. go-zpkg/artifact#179 moves the judgement
 // into the signed catalogue, where it is computed rather than committed.
 var KnownDeprecated = map[string][]string{
 	"openssl.org": {"1.1.1", "3.0", "3.1", "3.2", "3.3", "3.4", "3.6"},

@@ -19,10 +19,10 @@ jobs:
   #   GO-2026-6613 stdlib.Location     GO-2026-6608 stdlib.ReadMIMEHeader
   #
   # Reachable, not merely present: this module IS the HTTP and TLS client the
-  # rest of the fleet pulls bottles through, so those are its own paths.
+  # rest of the fleet pulls artifacts through, so those are its own paths.
   #
   # ⛔ AND THE `go` DIRECTIVE IS THE TOOLCHAIN. This lane always pinned
-  # go-version 1.27.2, so nothing CI built was vulnerable -- but bottle is a
+  # go-version 1.27.2, so nothing CI built was vulnerable -- but artifact is a
   # LIBRARY, and what matters for a library is the toolchain its CONSUMERS
   # build it with. A directive of 1.27.1 let every one of them link the
   # vulnerable standard library. Raising it to 1.27.2 took this module from
@@ -75,11 +75,11 @@ jobs:
       - uses: actions/setup-go@v7
         with:
           go-version: '1.27.4'
-      - run: go test -c -o bottle.test .
+      - run: go test -c -o artifact.test .
       - name: run under limits
         run: |
           ulimit -v 2097152
-          GOMEMLIMIT=256MiB ./bottle.test -test.run 'XzDeclaredDictionary' -test.v
+          GOMEMLIMIT=256MiB ./artifact.test -test.run 'XzDeclaredDictionary' -test.v
 
   build:
     runs-on: ubuntu-latest
@@ -114,7 +114,7 @@ jobs:
           - goos: linux
             goarch: s390x
           # wasm is a real target for this package, not a curiosity: a browser
-          # that installs a signed bottle into its own store runs THIS code.
+          # that installs a signed artifact into its own store runs THIS code.
           - goos: js
             goarch: wasm
           - goos: wasip1
@@ -236,7 +236,7 @@ jobs:
     # The other wasm lane runs under node, which gives Go's js/wasm port the
     # browser's fetch() and fs. wasip1 is a DIFFERENT port with a different
     # syscall surface — no network at all, and a filesystem only where one is
-    # granted. A package that installs bottles has to know which of the two it
+    # granted. A package that installs artifacts has to know which of the two it
     # is on, and the only way to know it does is to run there.
     steps:
       - uses: actions/checkout@v7

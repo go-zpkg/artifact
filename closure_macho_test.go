@@ -1,4 +1,4 @@
-package bottle
+package artifact
 
 import (
 	"encoding/binary"
@@ -320,7 +320,7 @@ func TestProvideMachoSonameAsksTheManifest(t *testing.T) {
 		t.Fatalf("provideMachoSoname = %+v, %v; want the newest that declares it", r, ok)
 	}
 	if len(installed) != 1 {
-		t.Errorf("downloaded %d bottles to answer a manifest question: %v", len(installed), installed)
+		t.Errorf("downloaded %d artifacts to answer a manifest question: %v", len(installed), installed)
 	}
 }
 
@@ -373,7 +373,7 @@ func TestProvideMachoSonameWhenTheLookupFails(t *testing.T) {
 // while this skipped them, so the auditor and the resolver disagreed
 // about 42% of a platform's backlog with not one line in the log.
 //
-// The warning does not resolve them (go-zpkg/bottle#166). It stops the
+// The warning does not resolve them (go-zpkg/artifact#166). It stops the
 // gap being invisible.
 func TestABareReferenceIsNamedRatherThanSkippedInSilence(t *testing.T) {
 	oldW := Warn

@@ -1,4 +1,4 @@
-package bottle
+package artifact
 
 import (
 	"errors"
@@ -65,14 +65,14 @@ func TestATypeCannotBeMatchedByAccident(t *testing.T) {
 
 // ⛔ THE COMMON STATE WAS THE UNCOVERED ONE. NotPublishedError is returned
 // when the repository does not exist at all — a brand-new package. The
-// ordinary case is a recipe with no bottle for YOUR platform: 567 of 1940
+// ordinary case is a recipe with no artifact for YOUR platform: 567 of 1940
 // projects in the published darwin/aarch64 catalogue on 2026-10-23. For one
 // release `pkgs request`'s hint could not fire on it, because that state was
 // a sentence rather than a type, and only RUNNING the shipped binary over a
 // list derived from the catalogue showed it.
 func TestTheCommonAbsenceIsTypedToo(t *testing.T) {
 	// The exact answer measured from pkgx v0.25.0.
-	e := &NoBottleHereError{
+	e := &NoArtifactHereError{
 		Project: "aerc-mail.org", OS: "darwin", Arch: "aarch64",
 		Available: []Ver{ParseVer("0.22.0")}, Absent: []string{"0.22.0"},
 	}
@@ -89,7 +89,7 @@ func TestTheCommonAbsenceIsTypedToo(t *testing.T) {
 	// be, blaming a constraint that did not exist. Moving the sentence into a
 	// type is exactly the sort of move that loses that fix, so both forms are
 	// pinned here.
-	c := &NoBottleHereError{
+	c := &NoArtifactHereError{
 		Project: "go.dev", OS: "linux", Arch: "x86-64",
 		Constraints: []string{"^1.27.1"},
 		Available:   []Ver{ParseVer("1.27.0"), ParseVer("1.27.1")}, Absent: []string{"1.27.1"},
@@ -111,7 +111,7 @@ func TestProjectToRequestNamesOnlyWhatCanBeRequested(t *testing.T) {
 		err  error
 		want string
 	}{
-		{"no bottle for this platform", &NoBottleHereError{Project: "aerc-mail.org"}, "aerc-mail.org"},
+		{"no artifact for this platform", &NoArtifactHereError{Project: "aerc-mail.org"}, "aerc-mail.org"},
 		{"the repository is not there", &NotPublishedError{Project: "opendev.org/openstack/python-openstackclient"}, "opendev.org/openstack/python-openstackclient"},
 		// The sentence that fired the hint wrongly in the first live run.
 		{"a missing command", errors.New("command not found in the requested packages: true"), ""},

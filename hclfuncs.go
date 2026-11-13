@@ -1,4 +1,4 @@
-package bottle
+package artifact
 
 // hclfuncs.go gives a recipe the function set Terraform has, minus every
 // function that would make a recipe unreproducible or let it read the machine

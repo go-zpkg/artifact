@@ -1,4 +1,4 @@
-package bottle
+package artifact
 
 import (
 	"context"
@@ -17,7 +17,7 @@ import (
 // itself. It is not a no-op worth tolerating: a copy that reports success
 // without moving anything is exactly how an empty destination passes for a
 // full one, which is the failure this whole operation exists to avoid.
-var ErrSameNamespace = errors.New("bottle: source and destination are the same namespace")
+var ErrSameNamespace = errors.New("artifact: source and destination are the same namespace")
 
 // CopyPublished copies one published tag of one project from src to dst,
 // preserving digests, together with everything that hangs off it: the cosign
@@ -26,40 +26,40 @@ var ErrSameNamespace = errors.New("bottle: source and destination are the same n
 // ⛔⛔ IT IS NOT HOW A REGISTRY NAMESPACE IS MOVED, AND IT WAS WRITTEN
 // BELIEVING IT WAS. The premise holds as far as it goes: GitHub's container
 // packages are org-scoped and do not follow a repository transfer — when every
-// repository moved from go-pkgx to go-zpkg, every bottle stayed, DistBase was
+// repository moved from go-pkgx to go-zpkg, every artifact stayed, DistBase was
 // rewritten to match, and v0.64.0 through v0.68.0 shipped a fleet pointing at
-// an empty registry (TestTheDefaultRegistryHoldsBottles is the gate that came
+// an empty registry (TestTheDefaultRegistryHoldsArtifacts is the gate that came
 // out of it). So the new namespace must be POPULATED.
 //
 // It is populated by BUILDING CORRECT RECIPES INTO IT, not by moving these
-// bottles. They were built from pkgxdev/pantry's recipes, which
+// artifacts. They were built from pkgxdev/pantry's recipes, which
 // go-zpkg/packages#431 establishes can be neither read nor copied — 2453
 // upstream files, no LICENSE and no COPYING — and whose item 1 already
-// concluded "the sovereign pantry is WRITTEN, not converted". The bottles also
+// concluded "the sovereign pantry is WRITTEN, not converted". The artifacts also
 // carry no build identity (packages/.github/workflows/wasip1.yml:201: "Nothing
 // in go-pkgx carries a build identity — it predates them"), so the sentence
-// this function was justified with, "a rebuild changes bottles that are
+// this function was justified with, "a rebuild changes artifacts that are
 // already attested", was false about the thing it protected.
 // go-zpkg/packages#440 carries the corrected order.
 //
 // What is left is the case where republishing verbatim is the POINT: a mirror
-// (go-zpkg/mirror; `zbk mirroraudit` opens with "A mirrored bottle is
+// (go-zpkg/mirror; `zbk mirroraudit` opens with "A mirrored artifact is
 // republished verbatim"). This has no caller in the migration.
 //
 // ⛔ EXTENDED copy, not Copy, and the difference is the whole point. oras.Copy
-// walks a manifest and its blobs — it would move the bottle and leave its
+// walks a manifest and its blobs — it would move the artifact and leave its
 // signature behind, because a signature is not a child of the manifest but a
-// REFERRER to it. A bottle that arrives unverifiable is worse than one that
+// REFERRER to it. An artifact that arrives unverifiable is worse than one that
 // does not arrive: `zpkgs install` verifies by default, so the first would be
 // a silent trust failure at install time and the second is a 404 at copy time.
 //
 // Digests survive by construction. ExtendedCopy moves content by descriptor,
 // so the manifest digest on the far side is the same string, and the signature
 // payload commits to exactly that (payloadCommitsTo, verify.go:185 — it checks
-// critical.image.docker-manifest-digest and nothing about WHERE the bottle
+// critical.image.docker-manifest-digest and nothing about WHERE the artifact
 // lives). That is why this is a copy and not a re-sign.
 //
-// It streams: ORAS fetches each blob and pushes it, so a 1 GB bottle does not
+// It streams: ORAS fetches each blob and pushes it, so a 1 GB artifact does not
 // become 1 GB of resident memory. Nothing here holds a tarball.
 //
 // The tag is carried over unchanged, deliberately. A copy that renamed a
@@ -67,10 +67,10 @@ var ErrSameNamespace = errors.New("bottle: source and destination are the same n
 // the catalogue is built by listing tags.
 func CopyPublished(ctx context.Context, src, dst *OCIClient, project, tag string) (ocispec.Descriptor, error) {
 	if src == nil || dst == nil {
-		return ocispec.Descriptor{}, errors.New("bottle: nil OCI client")
+		return ocispec.Descriptor{}, errors.New("artifact: nil OCI client")
 	}
 	if tag == "" {
-		return ocispec.Descriptor{}, errors.New("bottle: no tag to copy")
+		return ocispec.Descriptor{}, errors.New("artifact: no tag to copy")
 	}
 	if src.host == dst.host && src.repoBase == dst.repoBase {
 		return ocispec.Descriptor{}, fmt.Errorf("%w: %s/%s", ErrSameNamespace, src.host, src.repoBase)
@@ -88,7 +88,7 @@ func CopyPublished(ctx context.Context, src, dst *OCIClient, project, tag string
 	}
 
 	fail := func(what string, err error) (ocispec.Descriptor, error) {
-		return ocispec.Descriptor{}, fmt.Errorf("bottle: copy %s:%s (%s) from %s to %s: %w",
+		return ocispec.Descriptor{}, fmt.Errorf("artifact: copy %s:%s (%s) from %s to %s: %w",
 			project, tag, what, src.repoBase, dst.repoBase, err)
 	}
 
@@ -105,8 +105,8 @@ func CopyPublished(ctx context.Context, src, dst *OCIClient, project, tag string
 	// manifest, i.e. a predecessor of one of the index's children, and the
 	// downward walk never looks for predecessors again. Measured, not reasoned:
 	// the first version of this copied the tag alone, and the destination then
-	// answered "unsigned (no signature referrer)" to VerifyBottle while holding
-	// a byte-identical bottle.
+	// answered "unsigned (no signature referrer)" to VerifyArtifact while holding
+	// a byte-identical artifact.
 	//
 	// Starting from a platform manifest instead makes its signature a root, so
 	// it is copied with everything else.
@@ -118,7 +118,7 @@ func CopyPublished(ctx context.Context, src, dst *OCIClient, project, tag string
 	}
 
 	// The `<ver>--<os>-<arch>` tags, which is how platformManifests lists what a
-	// version publishes. Without them the destination still HOLDS every bottle
+	// version publishes. Without them the destination still HOLDS every artifact
 	// and cannot say which platforms it has, so an index repair there would
 	// compose from nothing.
 	for _, t := range src.platformTags(ctx, from, tag) {
@@ -139,7 +139,7 @@ func CopyPublished(ctx context.Context, src, dst *OCIClient, project, tag string
 // copyablePlatforms lists the per-platform manifests a version tag points at,
 // from the index itself rather than from the platform tags — an older publish
 // has entries in the index and no `--` tags at all, and a copy that skipped
-// those would move the index and leave the bottles it names behind.
+// those would move the index and leave the artifacts it names behind.
 //
 // It reports nothing rather than an error when the tag is a plain manifest and
 // not an index: there are then no children to copy first, and the version-tag

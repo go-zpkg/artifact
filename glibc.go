@@ -1,4 +1,4 @@
-package bottle
+package artifact
 
 // glibc.go decides WHICH glibc a linux closure gets, and keeps glibc-flavored
 // registry tags out of ordinary version resolution.
@@ -8,7 +8,7 @@ package bottle
 // an old kernel: glibc bakes its `--enable-kernel` floor into libc.so.6's
 // .note.ABI-tag and the loader REFUSES to run below it — the HPC case, where a
 // login node still runs a 3.10 kernel. Our factory stamps that floor as the
-// org.go-zpkg.glibc.min-kernel annotation when it publishes a glibc bottle, so
+// org.go-zpkg.glibc.min-kernel annotation when it publishes a glibc artifact, so
 // a client can read it from the registry without downloading anything: pick the
 // newest published glibc the running kernel can actually run.
 //
@@ -33,7 +33,7 @@ var osReleasePath = "/proc/sys/kernel/osrelease"
 // osReadFile is os.ReadFile, swappable in tests.
 var osReadFile = os.ReadFile
 
-// glibcFlavorSep separates a bottle's version from the glibc it was built
+// glibcFlavorSep separates an artifact's version from the glibc it was built
 // against in a registry tag: <version>-glibc<glibcVersion>.
 const glibcFlavorSep = "-glibc"
 
@@ -87,7 +87,7 @@ func resetGlibcConstraint() {
 
 // GlibcFlavor is the glibc build variant this host asks for: the ZPKG_GLIBC
 // pin, or "" for ordinary builds. A pinned host wants BOTH that exact glibc
-// bottle AND, wherever the factory published one, the tool built against it —
+// artifact AND, wherever the factory published one, the tool built against it —
 // the `<version>-glibc<ver>` tag.
 func GlibcFlavor() string {
 	return strings.TrimPrefix(strings.TrimSpace(Env("ZPKG_GLIBC")), "=")
@@ -112,7 +112,7 @@ func resolveGlibcConstraint() string {
 // or "" to mean "nothing to change".
 //
 // It is deliberately conservative: if the newest published glibc has no recorded
-// floor (a bottle published before the annotation existed, or a dist with no
+// floor (an artifact published before the annotation existed, or a dist with no
 // annotations at all) or already fits, it returns "" — so this only ever changes
 // what gets installed on a host that genuinely cannot run the newest glibc.
 func newestGlibcForKernel(kernel string) string {
@@ -141,7 +141,7 @@ func newestGlibcForKernel(kernel string) string {
 	return ""
 }
 
-// glibcMinKernelOf reads a published glibc bottle's minimum-kernel floor from
+// glibcMinKernelOf reads a published glibc artifact's minimum-kernel floor from
 // its registry annotation. A static HTTP dist carries no annotations, so it
 // reports "unknown" (empty) rather than an error.
 var glibcMinKernelOf = func(ver, osn, arch string) (string, error) {
@@ -159,9 +159,9 @@ var glibcMinKernelOf = func(ver, osn, arch string) (string, error) {
 	return Annotation(ann, GlibcMinKernelAnnotation), nil
 }
 
-// Annotations returns the OCI annotations of a published bottle's per-platform
-// manifest — how a client reads a bottle's self-description (a glibc's minimum
-// kernel, a tool's glibc flavor) without downloading the bottle itself.
+// Annotations returns the OCI annotations of a published artifact's per-platform
+// manifest — how a client reads an artifact's self-description (a glibc's minimum
+// kernel, a tool's glibc flavor) without downloading the artifact itself.
 func (c *OCIClient) Annotations(project, ver, osn, arch string) (map[string]string, error) {
 	repo, err := c.repository(project)
 	if err != nil {

@@ -1,4 +1,4 @@
-package bottle
+package artifact
 
 import (
 	"os"
@@ -16,7 +16,7 @@ func abiStore(t *testing.T, project, version string) (string, Resolved) {
 	return dir, r
 }
 
-// One link per ABI the bottle provides, pointing at the concrete version.
+// One link per ABI the artifact provides, pointing at the concrete version.
 //
 // v<major> holds ONE version, which is what breaks a project that changes its
 // soname inside a major: libxml2 2.13.9 and 2.15.4 both claim v2. An
@@ -77,7 +77,7 @@ func TestWriteABILinksKeepsBothLines(t *testing.T) {
 	}
 }
 
-// A bottle published before the annotation existed gets no links, and nothing
+// An artifact published before the annotation existed gets no links, and nothing
 // else changes. This step is inert on its own by design.
 func TestWriteABILinksWithoutTheAnnotation(t *testing.T) {
 	dir, r := abiStore(t, "acme.org/thing", "1.0.0")
@@ -134,7 +134,7 @@ func TestPlatformAnnotations(t *testing.T) {
 	t.Setenv("ZPKG_VERIFY", "0")
 	fr := newFakeRegistry(t, false)
 	defer fr.close()
-	c, err := NewOCIClient(fr.base("go-zpkg/bottles"))
+	c, err := NewOCIClient(fr.base("go-zpkg/artifacts"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -151,8 +151,8 @@ func TestPlatformAnnotations(t *testing.T) {
 		t.Errorf("annotations = %v", got)
 	}
 
-	// A tag nobody published is an error, not an empty map: "this bottle
-	// declares nothing" and "there is no such bottle" are different answers.
+	// A tag nobody published is an error, not an empty map: "this artifact
+	// declares nothing" and "there is no such artifact" are different answers.
 	if _, err := c.PlatformAnnotations("abi.test", "9.9.9", "linux", "aarch64"); err == nil {
 		t.Error("an unpublished tag returned annotations")
 	}

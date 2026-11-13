@@ -1,4 +1,4 @@
-package bottle
+package artifact
 
 import (
 	"crypto/x509"
@@ -40,7 +40,7 @@ func CertPool() *x509.CertPool {
 }
 
 // stallTimeout is how long a transfer may deliver nothing before it is treated
-// as dead. Progress resets it, so a big bottle can take as long as it needs.
+// as dead. Progress resets it, so a big artifact can take as long as it needs.
 var stallTimeout = 60 * time.Second
 
 // stallTransport guards every response body against a stalled transfer.

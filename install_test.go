@@ -1,4 +1,4 @@
-package bottle
+package artifact
 
 import (
 	"os"
@@ -264,7 +264,7 @@ func TestLoaderNameForS390x(t *testing.T) {
 	if got := LoaderNameFor("s390x"); got == "ld-linux-s390x.so.1" {
 		t.Error("the s390x entry was derived from the pattern, not from an artefact")
 	}
-	// The architectures bk is tested on but builds no bottle for stay absent:
+	// The architectures bk is tested on but builds no artifact for stay absent:
 	// there is no artefact to read a name out of, and a derived one is the
 	// defect this test exists for.
 	for _, arch := range []string{"ppc64le", "riscv64", "loong64"} {

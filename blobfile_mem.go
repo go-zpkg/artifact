@@ -1,6 +1,6 @@
 //go:build js
 
-package bottle
+package artifact
 
 import (
 	"bytes"
@@ -17,12 +17,12 @@ import (
 // fetchBlobFile stages a blob IN MEMORY, because a browser has no filesystem.
 //
 // The disk path exists for a reason that does not apply here: llvm.org is a
-// 1.7 GiB bottle, and holding one in a []byte made the largest package in the
+// 1.7 GiB artifact, and holding one in a []byte made the largest package in the
 // catalogue the memory floor of every install. In a page the constraint is the
 // opposite — os.CreateTemp answers "not implemented on js", which is exactly
 // how this surfaced:
 //
-//	blob sha256:4478…: temp file: open /tmp/bottle-blob-…: not implemented on js
+//	blob sha256:4478…: temp file: open /tmp/artifact-blob-…: not implemented on js
 //
 // and the packages a browser installs are wasm modules of kilobytes to a few
 // megabytes, not compilers. Trading disk for memory is the right way round on

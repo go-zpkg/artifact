@@ -1,4 +1,4 @@
-package bottle
+package artifact
 
 import (
 	"slices"
@@ -35,7 +35,7 @@ func TestTwoVariantsOfAVersionBothSurvive(t *testing.T) {
 }
 
 // Raw is the version; the TAG is where that build lives. A pull that used Raw
-// would fetch the unvariant bottle for every variant.
+// would fetch the unvariant artifact for every variant.
 func TestAVariantKeepsTheTagToPull(t *testing.T) {
 	const h = "abcdefghij234567"
 	got := selectVersions([]string{"3.3.11-h" + h}, "")
@@ -67,7 +67,7 @@ func TestAVariantDoesNotOrder(t *testing.T) {
 
 // ⛔⛔ AND THE PICK REFUSES RATHER THAN GUESSES. Two variants compare equal, so
 // "the newest" is whichever the sort left last — the same command would
-// install a different bottle tomorrow.
+// install a different artifact tomorrow.
 func TestAnAmbiguousVariantIsRefusedAndNamesTheCandidates(t *testing.T) {
 	vs := []Ver{
 		{Raw: "3.3.11", Nums: []int{3, 3, 11}, Variant: "aaaaaaaaaaaaaaaa"},

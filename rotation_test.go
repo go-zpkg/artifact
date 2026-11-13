@@ -1,4 +1,4 @@
-package bottle
+package artifact
 
 import (
 	"encoding/hex"
@@ -12,7 +12,7 @@ import (
 // either wrong is a fleet-wide outage that compiles.
 //
 // `SigningPublicKey` is believed, never re-derived: one wrong character and
-// every bottle fails verification with a message that reads as tampering.
+// every artifact fails verification with a message that reads as tampering.
 // And dropping the retired entry would refuse the whole published registry,
 // which is the failure mode rotation exists to avoid.
 //

@@ -1,4 +1,4 @@
-package bottle
+package artifact
 
 import (
 	"context"
@@ -8,9 +8,9 @@ import (
 
 // IndexLists reports whether the version tag's index carries desc.
 //
-// A bottle can be pushed, valid and signed — and absent from the index, because
+// An artifact can be pushed, valid and signed — and absent from the index, because
 // publishing the index is a read-modify-write on one mutable tag that several
-// publishers race on. Nothing about the bottle itself says so; only the index
+// publishers race on. Nothing about the artifact itself says so; only the index
 // does, which is why this takes the descriptor the push returned rather than
 // trying to discover it. Discovery would go through the very index in question.
 func (c *OCIClient) IndexLists(project, ver string, desc ocispec.Descriptor) (bool, error) {
