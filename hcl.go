@@ -1,4 +1,4 @@
-package bottle
+package artifact
 
 import (
 	"fmt"
@@ -19,7 +19,7 @@ import (
 // It lives here, and not in bk where the HCL front-end was written, because
 // the CLIENT has to read these files: the pantry overlay is fetched at install
 // time, and a recipe written in HCL is unreadable to a pkgx that cannot parse
-// it. bk imports bottle, so the parser cannot live in bk without a cycle — and
+// it. bk imports artifact, so the parser cannot live in bk without a cycle — and
 // two copies of it would drift.
 //
 // Converting to YAML rather than decoding straight into a recipe keeps ONE

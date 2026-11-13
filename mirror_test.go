@@ -1,8 +1,8 @@
-package bottle
+package artifact
 
 import "testing"
 
-func TestVersionsForAndDownloadBottle(t *testing.T) {
+func TestVersionsForAndDownloadArtifact(t *testing.T) {
 	t.Setenv("ZPKG_VERIFY", "0") // transport test: HTTP dist carries no signatures
 	osn, arch := HostSlug()
 	defer fakeServer(t, map[string]fakePkg{
@@ -16,11 +16,11 @@ func TestVersionsForAndDownloadBottle(t *testing.T) {
 	if err != nil || len(vs) != 2 {
 		t.Fatalf("VersionsFor n=%d err=%v", len(vs), err)
 	}
-	data, ext, err := DownloadBottle("acme.org/tool", "2.0.0", osn, arch)
+	data, ext, err := DownloadArtifact("acme.org/tool", "2.0.0", osn, arch)
 	if err != nil || ext != ".tar.gz" || len(data) == 0 {
-		t.Fatalf("DownloadBottle ext=%q n=%d err=%v", ext, len(data), err)
+		t.Fatalf("DownloadArtifact ext=%q n=%d err=%v", ext, len(data), err)
 	}
-	if _, _, err := DownloadBottle("no.org/nope", "1.0.0", osn, arch); err == nil {
+	if _, _, err := DownloadArtifact("no.org/nope", "1.0.0", osn, arch); err == nil {
 		t.Error("expected error for an unknown project (404)")
 	}
 }

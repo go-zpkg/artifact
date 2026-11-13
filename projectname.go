@@ -1,4 +1,4 @@
-package bottle
+package artifact
 
 import (
 	"errors"
@@ -55,7 +55,7 @@ import (
 // different path in the probe.
 
 // ErrBadProjectName is returned for a name that cannot be used as one.
-var ErrBadProjectName = errors.New("bottle: not a project name")
+var ErrBadProjectName = errors.New("artifact: not a project name")
 
 // maxProjectSegments bounds the depth. Four is the deepest real one; eight
 // leaves room without leaving a name that is really a path.

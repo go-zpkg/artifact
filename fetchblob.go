@@ -1,8 +1,8 @@
-package bottle
+package artifact
 
-// fetchblob.go pulls a bottle's layer blob with retries and byte-range resume.
+// fetchblob.go pulls an artifact's layer blob with retries and byte-range resume.
 //
-// A toolchain bottle is big — llvm.org's linux/aarch64 layer is 1.68 GiB — and a
+// A toolchain artifact is big — llvm.org's linux/aarch64 layer is 1.68 GiB — and a
 // single interrupted transfer used to lose the whole download: ORAS fetches a
 // blob in one shot, so a mid-stream cut surfaced as
 //
@@ -34,7 +34,7 @@ var (
 // blob on disk first and reads it back, so the retry/resume/digest behaviour is
 // the file path's — there is no second implementation to drift.
 //
-// For a bottle-sized blob, prefer fetchBlobFile: this one costs the blob's size
+// For an artifact-sized blob, prefer fetchBlobFile: this one costs the blob's size
 // in anonymous memory, which is what a 2 GiB micro-VM does not have when the
 // blob is a 1.7 GiB compiler.
 func (c *OCIClient) fetchBlob(ctx context.Context, project string, desc ocispec.Descriptor) ([]byte, error) {

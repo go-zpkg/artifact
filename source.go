@@ -1,4 +1,4 @@
-package bottle
+package artifact
 
 import (
 	"context"
@@ -14,7 +14,7 @@ import (
 	"oras.land/oras-go/v2/errdef"
 )
 
-// A source mirror: the bytes a bottle was BUILT FROM, stored in a registry so a
+// A source mirror: the bytes an artifact was BUILT FROM, stored in a registry so a
 // rebuild does not depend on an upstream host answering.
 //
 // This matters more than "upstream might go away". 57% of the pkgx pantry is
@@ -26,7 +26,7 @@ import (
 // the first and only stored artefact those sources have ever had.
 //
 // Addressed by CONTENT, not by URL. `SourceTag` turns the sha256 the fetcher
-// already computed into the tag, so the digest recorded in a bottle's SBOM IS
+// already computed into the tag, so the digest recorded in an artifact's SBOM IS
 // the address of the bytes, and nothing has to be named twice or kept in step.
 const (
 	// MediaSourceLayer marks the stored archive. Deliberately codec-agnostic:
@@ -41,7 +41,7 @@ const (
 	// the read-compatibility rule.
 	MediaSourceLayer = "application/vnd.go-zpkg.source.layer.v1"
 	// ArtifactTypeSource marks a source manifest, so a registry listing can tell
-	// these from bottles.
+	// these from artifacts.
 	ArtifactTypeSource = "application/vnd.go-zpkg.source"
 )
 
@@ -50,7 +50,7 @@ const (
 // identifies them. Declared in annotations.go, read through Annotation().
 
 // ErrSourceAbsent is returned by PullSource when the store has no such digest.
-var ErrSourceAbsent = errors.New("bottle: source not in the mirror")
+var ErrSourceAbsent = errors.New("artifact: source not in the mirror")
 
 // SourceTag is the registry tag for a source digest. OCI tags cannot contain a
 // colon, so `sha256:abcd…` becomes `sha256-abcd…` — the same substitution the
@@ -75,7 +75,7 @@ func PinTag(uri string) string {
 }
 
 // SourceDigest is the sha256 of data in lowercase hex, the form SourceTag takes
-// and the form a bottle's SBOM records.
+// and the form an artifact's SBOM records.
 func SourceDigest(data []byte) string {
 	sum := sha256.Sum256(data)
 	return hex.EncodeToString(sum[:])

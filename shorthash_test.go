@@ -1,4 +1,4 @@
-package bottle
+package artifact
 
 import (
 	"strings"
@@ -7,9 +7,9 @@ import (
 
 // ⛔⛔ THE FACTORY AND THE INSTALLER MUST SHORTEN ALIKE, AND THAT IS THE WHOLE
 // REASON THIS IS EXPORTED. go-zpkg/zbk computes a build's identity and has to
-// put it in an OCI tag; `bottle` has to find the matching directory. If each
+// put it in an OCI tag; `artifact` has to find the matching directory. If each
 // shortened in its own way the two would address different things, and the
-// symptom would be "the bottle is not published" for a bottle that is.
+// symptom would be "the artifact is not published" for an artifact that is.
 func TestShortHashIsTheShapeATagAndAPathBothAccept(t *testing.T) {
 	got := ShortHash("sha256:e47e158cd9d5d25a0fac14c4deaf4877af16d17c8780a14f02f9a6f0e8839894")
 

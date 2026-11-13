@@ -1,4 +1,4 @@
-module github.com/go-zpkg/bottle
+module github.com/go-zpkg/artifact
 
 go 1.27.4
 

@@ -1,4 +1,4 @@
-package bottle
+package artifact
 
 // yamltohcl.go renders a recipe document as package.hcl text, and converts an
 // upstream package.yml into one ON THE WAY IN.

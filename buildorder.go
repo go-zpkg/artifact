@@ -1,4 +1,4 @@
-package bottle
+package artifact
 
 import (
 	"fmt"
@@ -11,16 +11,16 @@ import (
 // Ordering the builds of one version.
 //
 // ⛔⛔ THERE IS NO BUILD DATE, AND THAT IS A DELIBERATE PROPERTY RATHER THAN A
-// GAP TO FILL. A published bottle's timestamp is PINNED — `bk factory` stamps
+// GAP TO FILL. A published artifact's timestamp is PINNED — `bk factory` stamps
 // SOURCE_DATE_EPOCH, or its own fixed epoch when that is unset, never the
-// wall clock — so that re-publishing the same bottle yields byte-identical
-// attestations and the same referrer digests. Every bottle the factory
+// wall clock — so that re-publishing the same artifact yields byte-identical
+// attestations and the same referrer digests. Every artifact the factory
 // publishes therefore carries the SAME instant, and sorting by it would order
 // a list by a constant while looking like it ordered by time.
 //
 // Taking the wall clock instead would trade that for an ordering nobody
 // needs: it would make every rebuild a new artefact and break the idempotent
-// re-push. So the date is not recoverable from a bottle, by construction, and
+// re-push. So the date is not recoverable from an artifact, by construction, and
 // a reader asking "which is the newest" has to be answered with something
 // that was actually written down.
 //
@@ -46,12 +46,12 @@ const (
 	//
 	// ⛔ IT IS A FACT ABOUT THIS MACHINE AND THE LISTING MUST SAY SO. It is
 	// when you got the build, not when it was built, and the two are
-	// unrelated: pulling a two-year-old bottle today puts it first.
+	// unrelated: pulling a two-year-old artifact today puts it first.
 	ByInstalled BuildOrder = "installed"
 	// ByClosure is the order a reader actually means by "newer": a build made
 	// against a later toolchain comes first.
 	//
-	// ⛔⛔ IT IS THE ONE ORDER THE BOTTLES THEMSELVES CARRY. There is no build
+	// ⛔⛔ IT IS THE ONE ORDER THE ARTIFACTS THEMSELVES CARRY. There is no build
 	// date (see above), but the closure IS recorded — so "built with go.dev
 	// 1.27.4" against "built with go.dev 1.27.3" is a comparison of two facts
 	// rather than an inference, and it is exactly the comparison a CVE
@@ -163,7 +163,7 @@ func closureRank(builds []Build) map[string]int {
 // time.
 //
 // ⛔ AND A SPEC THAT RECORDS NOTHING IS NEVER LATER AND NEVER EARLIER. Every
-// bottle published before identities existed is one of those; ranking them
+// artifact published before identities existed is one of those; ranking them
 // against a described build would be comparing a fact with a blank.
 func closureIsLater(a, b Concrete) bool {
 	if a.IsZero() || b.IsZero() {
@@ -196,7 +196,7 @@ func isWithdrawn(project string, b Build) bool {
 // installedAt is when a build's directory appeared in this store, or the zero
 // time when it is not installed.
 //
-// ⛔ THE DIRECTORY'S OWN MODIFICATION TIME, NOT A FILE INSIDE IT. A bottle's
+// ⛔ THE DIRECTORY'S OWN MODIFICATION TIME, NOT A FILE INSIDE IT. An artifact's
 // files carry the timestamps the archive recorded, which the publisher pinned
 // for reproducibility — so reading one would report the pinned epoch and
 // call it an install date.
@@ -214,6 +214,6 @@ func installedAt(path string) time.Time {
 // WhyNoDate is the one line a command prints when a reader asks for an order
 // by build date, so the absence is explained rather than looking like an
 // oversight.
-const WhyNoDate = "there is no build date: a published bottle's timestamp is pinned " +
+const WhyNoDate = "there is no build date: a published artifact's timestamp is pinned " +
 	"(SOURCE_DATE_EPOCH) so that re-publishing it is byte-identical, which means every " +
-	"bottle carries the same instant. --sort=installed orders by when THIS machine got them."
+	"artifact carries the same instant. --sort=installed orders by when THIS machine got them."

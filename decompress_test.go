@@ -1,4 +1,4 @@
-package bottle
+package artifact
 
 import (
 	"archive/tar"
@@ -12,12 +12,12 @@ import (
 	"github.com/ulikunitz/xz"
 )
 
-// tarPayload is a one-entry tar stream, the shape a bottle actually has.
+// tarPayload is a one-entry tar stream, the shape an artifact actually has.
 func tarPayload(t *testing.T) []byte {
 	t.Helper()
 	var raw bytes.Buffer
 	tw := tar.NewWriter(&raw)
-	body := []byte("a bottle's worth of bytes")
+	body := []byte("an artifact's worth of bytes")
 	if err := tw.WriteHeader(&tar.Header{Name: "prefix/bin/tool", Mode: 0o755, Size: int64(len(body))}); err != nil {
 		t.Fatal(err)
 	}
@@ -30,7 +30,7 @@ func tarPayload(t *testing.T) []byte {
 	return raw.Bytes()
 }
 
-// TestDecompressorRoundTripsEveryPublishedCodec: a bottle published in any of
+// TestDecompressorRoundTripsEveryPublishedCodec: an artifact published in any of
 // the three formats must install. gzip and xz are what the catalogue holds
 // today; zstd is what it will hold — and a reader that meets an unexpected
 // codec fails with "invalid header", which reads like a corrupt download.
@@ -119,11 +119,11 @@ func TestDecompressorReportsBadStreams(t *testing.T) {
 // so the mapping has to know +zstd — including the loose form.
 func TestExtForLayerCoversZstd(t *testing.T) {
 	for _, tc := range []struct{ mt, want string }{
-		{MediaBottleLayerZst, ExtTarZst},
+		{MediaLayerZst, ExtTarZst},
 		{"application/vnd.oci.image.layer.v1.tar+zstd", ExtTarZst},
 		{"application/x-something-zstd", ExtTarZst},
-		{MediaBottleLayerGz, ExtTarGz},
-		{MediaBottleLayerXz, ExtTarXz},
+		{MediaLayerGz, ExtTarGz},
+		{MediaLayerXz, ExtTarXz},
 		{"application/vnd.oci.image.config.v1+json", ""},
 	} {
 		if got := extForLayer(tc.mt); got != tc.want {
@@ -132,16 +132,16 @@ func TestExtForLayerCoversZstd(t *testing.T) {
 	}
 }
 
-// TestZstdBottleRoundTripsThroughTheRegistry is the migration in one test: a
-// bottle PUBLISHED as zstd must come back with the right media type, the right
+// TestZstdArtifactRoundTripsThroughTheRegistry is the migration in one test: a
+// artifact PUBLISHED as zstd must come back with the right media type, the right
 // extension, and install. Publishing a codec the installed base cannot read
 // would brick every consumer, so the reader ships first and this is what says
 // it is ready.
-func TestZstdBottleRoundTripsThroughTheRegistry(t *testing.T) {
+func TestZstdArtifactRoundTripsThroughTheRegistry(t *testing.T) {
 	t.Setenv("ZPKG_VERIFY", "0")
 	fr := newFakeRegistry(t, false)
 	defer fr.close()
-	base := fr.base("go-zpkg/bottles")
+	base := fr.base("go-zpkg/artifacts")
 	c, err := NewOCIClient(base)
 	if err != nil {
 		t.Fatal(err)
@@ -169,7 +169,7 @@ func TestZstdBottleRoundTripsThroughTheRegistry(t *testing.T) {
 	defer func() { DistBase = old; resetOCICache() }()
 	resetOCICache()
 
-	got, ext, err := DownloadBottle("zst.test", "1.0.0", "linux", "aarch64")
+	got, ext, err := DownloadArtifact("zst.test", "1.0.0", "linux", "aarch64")
 	if err != nil {
 		t.Fatalf("download: %v", err)
 	}

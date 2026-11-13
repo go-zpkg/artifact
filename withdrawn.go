@@ -1,4 +1,4 @@
-package bottle
+package artifact
 
 import (
 	"encoding/json"
@@ -60,7 +60,7 @@ import (
 // Read locally, once, like the deprecation list: the resolver never touches
 // the network to choose, because FROM scratch and air-gapped use must keep
 // working. Where the file comes from — `bk advisories` and the VEX documents
-// attached to published bottles — is a separate matter, the same separation
+// attached to published artifacts — is a separate matter, the same separation
 // as `bk eol` and ZPKG_DEPRECATED.
 const WithdrawnEnv = "ZPKG_WITHDRAWN"
 

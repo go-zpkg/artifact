@@ -1,4 +1,4 @@
-package bottle
+package artifact
 
 import (
 	"errors"
@@ -38,7 +38,7 @@ import (
 // # WHERE IT LIVES, AND WHY OLD READERS DO NOT BREAK ON IT
 //
 // In package.hcl, beside the rest of the recipe. That was decided by
-// measurement against bottle v0.43.0, the reader every installed pkgm and
+// measurement against artifact v0.43.0, the reader every installed pkgm and
 // pkgx carries: HCLToMap is a generic reader, not a schema-checked decode, so
 // a block it has never heard of is read as one more map key and ignored by
 // every consumer — FetchMeta returns the same deps and provides with the block
@@ -157,7 +157,7 @@ func ParseService(src []byte, filename string) (*Service, error) {
 	case 1:
 	default:
 		return nil, fmt.Errorf("%w: %s has %d service blocks; a recipe holds at most one, "+
-			"because a reader before bottle v0.44.0 reads two as a duplicate key and refuses the whole recipe",
+			"because a reader before artifact v0.44.0 reads two as a duplicate key and refuses the whole recipe",
 			ErrBadService, filename, len(blocks))
 	}
 	return decodeService(blocks[0])

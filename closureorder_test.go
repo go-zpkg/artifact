@@ -1,4 +1,4 @@
-package bottle
+package artifact
 
 import (
 	"testing"
@@ -68,7 +68,7 @@ func TestAnExtraDependencyIsNotLaterness(t *testing.T) {
 	}
 }
 
-// ⛔ A SPEC THAT RECORDS NOTHING IS NEITHER LATER NOR EARLIER. Every bottle
+// ⛔ A SPEC THAT RECORDS NOTHING IS NEITHER LATER NOR EARLIER. Every artifact
 // published before identities existed is one of those, and ranking it
 // against a described build would compare a fact with a blank.
 func TestABuildWithNoSpecIsNeverOrdered(t *testing.T) {

@@ -1,4 +1,4 @@
-package bottle
+package artifact
 
 import (
 	"os"
@@ -14,7 +14,7 @@ import (
 // go-pkgx → go-zpkg rename rewrote the prose and could not rewrite the
 // constant, because the constant is a deployment fact: GitHub's container
 // packages are org-scoped and did not follow the repository transfer, so
-// every bottle stayed where it was.
+// every artifact stayed where it was.
 //
 // zpkgx's two usage strings had exactly this defect and are now gated there
 // (TestEveryHelpTextNamesTheRealRegistryDefault). The README was not, and on
@@ -22,7 +22,7 @@ import (
 // default, the claim looked corroborated by this README, and half an hour
 // went into "the clients already point at the new org" before the constant
 // settled it. A reader who follows the stated default points ZPKG_DIST at a
-// registry holding none of the bottles and reads the 403 as a permissions
+// registry holding none of the artifacts and reads the 403 as a permissions
 // problem.
 //
 // A repeated lesson becomes a gate. This does not say which value is right;
@@ -61,14 +61,14 @@ func TestTheReadmeNamesTheRealRegistryDefault(t *testing.T) {
 func TestTheReadmeDoesNotNameTheEmptyRegistry(t *testing.T) {
 	const empty = "oci://ghcr.io/go-zpkg/packages"
 	if strings.Contains(DefaultDistBase, "go-zpkg/packages") {
-		t.Skip("the default now points there, so the bottles moved and this check is obsolete")
+		t.Skip("the default now points there, so the artifacts moved and this check is obsolete")
 	}
 	body, err := os.ReadFile("README.md")
 	if err != nil {
 		t.Fatal(err)
 	}
 	if strings.Contains(string(body), empty) {
-		t.Errorf("the README names %s, which is not where the published bottles are "+
+		t.Errorf("the README names %s, which is not where the published artifacts are "+
 			"(the default is %q)", empty, DefaultDistBase)
 	}
 }

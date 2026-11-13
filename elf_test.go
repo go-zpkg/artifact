@@ -1,4 +1,4 @@
-package bottle
+package artifact
 
 import (
 	"debug/elf"
@@ -222,7 +222,7 @@ func writeInterpELFAs(t *testing.T, path, interp string, leadingLoad bool, extra
 	}
 }
 
-// TestELFInterp: the loader path a bottle names is the first of Nix's three
+// TestELFInterp: the loader path an artifact names is the first of Nix's three
 // bootstrap invariants — the final environment must not REFERENCE the seed.
 // A PT_INTERP under /lib64 says the MACHINE has the loader, not the store.
 func TestELFInterp(t *testing.T) {

@@ -1,4 +1,4 @@
-package bottle
+package artifact
 
 import (
 	"strings"
@@ -6,14 +6,22 @@ import (
 )
 
 // ⛔⛔ EVERY STRING IN THIS FILE IS A LITERAL ON PURPOSE. These are the names
-// 42 756 PUBLISHED bottles carry, and nothing rewrites a published manifest.
+// 42 756 PUBLISHED artifacts carry, and nothing rewrites a published manifest.
 // Written as constants they could be changed in sympathy with the new ones
 // during a tidy-up and the suite would stay green while every existing
 // install broke. A literal cannot drift.
 
-// The vendor namespace the project used to mint names in, before it was
-// checked against upstream's own corpus (docs.pkgx.sh/llms-full.txt, read
-// 2026-11-04): pkgx distributes plain HTTPS tarballs and defines no OCI
+// ⛔⛔ THERE ARE NOW TWO RETIRED GENERATIONS, AND THE SWEEP THAT ADDED THE
+// SECOND IS WHY THIS FILE EXISTS. The `bottle → artifact` rename ran as a
+// substring pass over the whole tree and rewrote the three literals below to
+// `vnd.pkgx.artifact.*` — a spelling that has never been published and never
+// will be. The suite stayed green, because `extForLayer` matches the codec
+// suffix and would have accepted anything ending in `tar+gzip`. Restored by
+// hand, and the second generation added beside them.
+//
+// The first: the vendor namespace the project used to mint names in, before
+// it was checked against upstream's own corpus (docs.pkgx.sh/llms-full.txt,
+// read 2026-11-04) — pkgx distributes plain HTTPS tarballs and defines no OCI
 // artifact, no artifact type and no media type.
 const (
 	publishedLayerGz  = "application/vnd.pkgx.bottle.layer.v1.tar+gzip"
@@ -21,22 +29,36 @@ const (
 	publishedLayerZst = "application/vnd.pkgx.bottle.layer.v1.tar+zstd"
 )
 
-// ⛔ A PUBLISHED BOTTLE MUST STILL BE READABLE. extForLayer is what turns a
+// The second: ours, correctly namespaced, but naming the artifact after
+// pkgx's word for it. Everything published between the vendor-namespace fix
+// and this rename carries these.
+const (
+	bottleLayerGz  = "application/vnd.go-zpkg.bottle.layer.v1.tar+gzip"
+	bottleLayerXz  = "application/vnd.go-zpkg.bottle.layer.v1.tar+xz"
+	bottleLayerZst = "application/vnd.go-zpkg.bottle.layer.v1.tar+zstd"
+	bottleArtifact = "application/vnd.go-zpkg.bottle"
+)
+
+// ⛔ A PUBLISHED ARTIFACT MUST STILL BE READABLE. extForLayer is what turns a
 // layer's media type into the codec that unpacks it; if it stops recognising
-// the published spelling, every bottle in the registry becomes an unknown
+// the published spelling, every artifact in the registry becomes an unknown
 // blob — and the failure is not a clean error, it is `ext == ""`, which reads
-// as "not a bottle layer".
+// as "not an artifact layer".
 func TestEveryPublishedLayerTypeStillNamesItsCodec(t *testing.T) {
 	for mt, want := range map[string]string{
 		publishedLayerGz:  ExtTarGz,
 		publishedLayerXz:  ExtTarXz,
 		publishedLayerZst: ExtTarZst,
+		// The second retired generation, published under our own namespace.
+		bottleLayerGz:  ExtTarGz,
+		bottleLayerXz:  ExtTarXz,
+		bottleLayerZst: ExtTarZst,
 		// And the ones written from now on.
-		MediaBottleLayerGz:  ExtTarGz,
-		MediaBottleLayerXz:  ExtTarXz,
-		MediaBottleLayerZst: ExtTarZst,
+		MediaLayerGz:  ExtTarGz,
+		MediaLayerXz:  ExtTarXz,
+		MediaLayerZst: ExtTarZst,
 		// The source layer carries no codec in its name by design — the bytes
-		// are stored exactly as they arrived — so it is NOT a bottle layer.
+		// are stored exactly as they arrived — so it is NOT an artifact layer.
 		"application/vnd.pkgx.source.layer.v1":    "",
 		"application/vnd.go-zpkg.source.layer.v1": "",
 	} {
@@ -51,11 +73,22 @@ func TestEveryPublishedLayerTypeStillNamesItsCodec(t *testing.T) {
 // defined these.
 func TestTheMintedNamesAreOurs(t *testing.T) {
 	for _, s := range []string{
-		MediaBottleLayerGz, MediaBottleLayerXz, MediaBottleLayerZst, ArtifactTypeBottle,
+		MediaLayerGz, MediaLayerXz, MediaLayerZst, ArtifactType,
 		MediaSourceLayer, ArtifactTypeSource,
 	} {
 		if !strings.HasPrefix(s, "application/vnd.go-zpkg.") {
 			t.Errorf("%q is not in our vendor namespace", s)
+		}
+	}
+	// ⛔ AND NONE OF THEM MAY STILL CARRY THE RETIRED WORD. The namespace
+	// check above passed throughout the years this project called the thing a
+	// bottle, so on its own it cannot see this rename at all.
+	for _, s := range []string{
+		MediaLayerGz, MediaLayerXz, MediaLayerZst, ArtifactType,
+		MediaSourceLayer, ArtifactTypeSource,
+	} {
+		if strings.Contains(s, "bottle") {
+			t.Errorf("%q still names the artifact after pkgx's word for it", s)
 		}
 	}
 	for _, s := range []string{
@@ -76,7 +109,7 @@ func TestTheMintedNamesAreOurs(t *testing.T) {
 // failure mode is why: every one of these keys means something DIFFERENT when
 // absent — no glibc flavour, no declared sonames, no recorded spec. A reader
 // that missed them would not raise an error, it would quietly conclude the
-// bottle has none of those things.
+// artifact has none of those things.
 func TestAnnotationsPublishedUnderOlderKeysAreStillRead(t *testing.T) {
 	for _, c := range []struct{ key, legacy string }{
 		{GlibcVersionAnnotation, "org.go-pkgx.glibc.version"},
@@ -87,7 +120,7 @@ func TestAnnotationsPublishedUnderOlderKeysAreStillRead(t *testing.T) {
 		{AnnotationSourceURI, "dev.pkgx.source.uri"},
 	} {
 		if got := Annotation(map[string]string{c.legacy: "value"}, c.key); got != "value" {
-			t.Errorf("a bottle carrying %q was read as having no %q (got %q)", c.legacy, c.key, got)
+			t.Errorf("an artifact carrying %q was read as having no %q (got %q)", c.legacy, c.key, got)
 		}
 	}
 }
@@ -120,7 +153,7 @@ func TestAnEmptyCurrentKeyDoesNotHideALegacyValue(t *testing.T) {
 
 // ⛔ AND "ABSENT" MUST STAY DISTINGUISHABLE FROM "PRESENT AND EMPTY" for the
 // spec, because they are different defects: an empty spec is a malformed
-// bottle, a missing one is simply an older bottle. SpecOf relies on this.
+// artifact, a missing one is simply an older artifact. SpecOf relies on this.
 func TestAnnotationPresentSeparatesAbsentFromEmpty(t *testing.T) {
 	if _, ok := AnnotationPresent(map[string]string{}, SpecAnnotation); ok {
 		t.Error("an absent annotation reported present")

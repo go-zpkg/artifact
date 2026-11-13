@@ -1,4 +1,4 @@
-package bottle
+package artifact
 
 import (
 	"archive/tar"
@@ -124,7 +124,7 @@ type fakePkg struct {
 	files      map[string]string            // path within prefix -> contents (regular files)
 	filesByVer map[string]map[string]string // per-version override of files (for soname-drift tests)
 	xzOnly     bool
-	noBottle   map[string]bool // versions listed in versions.txt but with no bottle (404)
+	noArtifact map[string]bool // versions listed in versions.txt but with no artifact (404)
 }
 
 func fakeServer(t *testing.T, pkgs map[string]fakePkg) func() {
@@ -154,7 +154,7 @@ func fakeServer(t *testing.T, pkgs map[string]fakePkg) func() {
 			http.NotFound(w, r)
 			return
 		}
-		// bottle: <project>/<os>/<arch>/v<ver>.tar.(gz|xz)
+		// artifact: <project>/<os>/<arch>/v<ver>.tar.(gz|xz)
 		for proj, pk := range pkgs {
 			pfx := proj + "/" + osn + "/" + arch + "/v"
 			if !strings.HasPrefix(p, pfx) {
@@ -165,9 +165,9 @@ func fakeServer(t *testing.T, pkgs map[string]fakePkg) func() {
 				http.NotFound(w, r) // force xz fallback
 				return
 			}
-			// A version present in versions.txt but with no published bottle 404s
+			// A version present in versions.txt but with no published artifact 404s
 			// for both extensions (exercises the install-failure/continue paths).
-			if v := strings.TrimSuffix(strings.TrimSuffix(rest, ".tar.gz"), ".tar.xz"); pk.noBottle[v] {
+			if v := strings.TrimSuffix(strings.TrimSuffix(rest, ".tar.gz"), ".tar.xz"); pk.noArtifact[v] {
 				http.NotFound(w, r)
 				return
 			}
@@ -179,13 +179,13 @@ func fakeServer(t *testing.T, pkgs map[string]fakePkg) func() {
 						files = f
 					}
 				}
-				w.Write(makeBottleGz(t, proj, ver, files))
+				w.Write(makeArtifactGz(t, proj, ver, files))
 				return
 			}
 		}
 		http.NotFound(w, r)
 	})
-	// The fixture is a static-HTTP dist serving UNSIGNED bottles, so the
+	// The fixture is a static-HTTP dist serving UNSIGNED artifacts, so the
 	// fail-closed check refuses every install through it — correctly, now that
 	// the install path enforces it too. Tests that exercise verification itself
 	// set ZPKG_VERIFY back on explicitly.
@@ -207,8 +207,8 @@ func fakeServer(t *testing.T, pkgs map[string]fakePkg) func() {
 	}
 }
 
-// makeBottleGz builds a gzip'd tar with the pkgx <project>/v<ver>/... layout.
-func makeBottleGz(t *testing.T, project, ver string, files map[string]string) []byte {
+// makeArtifactGz builds a gzip'd tar with the pkgx <project>/v<ver>/... layout.
+func makeArtifactGz(t *testing.T, project, ver string, files map[string]string) []byte {
 	t.Helper()
 	var buf bytes.Buffer
 	gz := gzip.NewWriter(&buf)
@@ -455,7 +455,7 @@ func TestResolveClosureAndInstall(t *testing.T) {
 	}
 }
 
-func TestInstallBottleConcurrent(t *testing.T) {
+func TestInstallArtifactConcurrent(t *testing.T) {
 	defer fakeServer(t, map[string]fakePkg{
 		"acme.org/tool": {
 			versions: []string{"1.0.0"},
@@ -465,7 +465,7 @@ func TestInstallBottleConcurrent(t *testing.T) {
 	})()
 	dir := t.TempDir()
 	r := Resolved{"acme.org/tool", ParseVer("1.0.0")}
-	// Many workers install the same bottle into one ZPKG_DIR at once.
+	// Many workers install the same artifact into one ZPKG_DIR at once.
 	errs := make(chan error, 12)
 	for i := 0; i < 12; i++ {
 		go func() { _, e := Install(r, dir); errs <- e }()
@@ -491,7 +491,7 @@ func TestInstallBottleConcurrent(t *testing.T) {
 	}
 }
 
-func TestInstallBottleXZFallback(t *testing.T) {
+func TestInstallArtifactXZFallback(t *testing.T) {
 	// gzip 404s -> exercises the .tar.xz branch error path (no xz body served).
 	defer fakeServer(t, map[string]fakePkg{
 		"xz.org/only": {versions: []string{"1.0.0"}, yaml: "provides:\n  - bin/only\n", xzOnly: true},
@@ -502,7 +502,7 @@ func TestInstallBottleXZFallback(t *testing.T) {
 	}
 }
 
-func TestFetchBottleServerError(t *testing.T) {
+func TestFetchArtifactServerError(t *testing.T) {
 	t.Setenv("ZPKG_VERIFY", "0") // status-code path: an HTTP dist is unverifiable by design
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "boom", 500)
@@ -511,7 +511,7 @@ func TestFetchBottleServerError(t *testing.T) {
 	old := DistBase
 	DistBase = srv.URL
 	defer func() { DistBase = old }()
-	_, _, _, err := fetchBottle(Resolved{"a/b", ParseVer("1.0.0")}, "linux", "x86-64")
+	_, _, _, err := fetchArtifact(Resolved{"a/b", ParseVer("1.0.0")}, "linux", "x86-64")
 	if err == nil {
 		t.Fatal("want error on 500")
 	}
@@ -921,13 +921,13 @@ func TestHTTPGetRetriesTransient(t *testing.T) {
 
 // TestInstallForTargetPlatform: a builder stages a rootfs for the platform it
 // is BUILDING, not the one it runs on — a linux/x86-64 image assembled from a
-// darwin/arm64 laptop must fetch the linux/x86-64 bottle.
+// darwin/arm64 laptop must fetch the linux/x86-64 artifact.
 func TestInstallForTargetPlatform(t *testing.T) {
 	setGoos(t, "darwin")
 	setGoarch(t, "aarch64")
 	t.Setenv("ZPKG_VERIFY", "0") // a bare HTTP fixture carries no signatures
 
-	tarball := makeBottleGz(t, "tool.org", "1.0.0", map[string]string{"bin/tool": "x"})
+	tarball := makeArtifactGz(t, "tool.org", "1.0.0", map[string]string{"bin/tool": "x"})
 	var asked []string
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		asked = append(asked, r.URL.Path)
@@ -962,18 +962,18 @@ func TestInstallForTargetPlatform(t *testing.T) {
 
 // TestPickVersionForSkipsUnpublishedPlatform is the linux-headers episode in
 // miniature: a mirror wave lands 7.2.1 for arm64 only, and resolving x86-64
-// must NOT pick it — the tag listing spans platforms, the bottle does not.
+// must NOT pick it — the tag listing spans platforms, the artifact does not.
 //
 // Before this, staging a sovereign rootfs died with
 //
-//	install kernel.org/linux-headers 7.2.1: no bottle for
+//	install kernel.org/linux-headers 7.2.1: no artifact for
 //	kernel.org/linux-headers v7.2.1 (linux/x86-64): platform not in index
 //
 // naming a version nobody had asked for.
 func TestPickVersionForSkipsUnpublishedPlatform(t *testing.T) {
 	fr := newFakeRegistry(t, false)
 	oldDist, oldUp := DistBase, UpstreamDist
-	base := fr.base("go-zpkg/bottles")
+	base := fr.base("go-zpkg/artifacts")
 	DistBase = base
 	// Any fallback to the upstream dist would mask the behaviour under test.
 	UpstreamDist = "https://upstream.invalid"
@@ -1016,7 +1016,7 @@ func TestPickVersionForSkipsUnpublishedPlatform(t *testing.T) {
 	}
 }
 
-// TestFetchBottleUsesCacheButTrustsTheRegistry: the pull-through cache serves
+// TestFetchArtifactUsesCacheButTrustsTheRegistry: the pull-through cache serves
 // the bytes and the REGISTRY still says whether they are the right ones.
 //
 // The cache exists because staging a sovereign rootfs pulls ~2 GiB per job. It
@@ -1024,10 +1024,10 @@ func TestPickVersionForSkipsUnpublishedPlatform(t *testing.T) {
 // not synced, so resolution would fall back to the upstream dist and ask for a
 // VERSION where our registry uses a TAG — gnu.org/bash is published as `5.3`,
 // not `5.3.0` — and the pull 404s on a tag that never existed.
-func TestFetchBottleUsesCacheButTrustsTheRegistry(t *testing.T) {
+func TestFetchArtifactUsesCacheButTrustsTheRegistry(t *testing.T) {
 	real := newFakeRegistry(t, false)
 	cache := newFakeRegistry(t, false)
-	realBase, cacheBase := real.base("go-zpkg/bottles"), cache.base("go-zpkg/bottles")
+	realBase, cacheBase := real.base("go-zpkg/artifacts"), cache.base("go-zpkg/artifacts")
 
 	kp, err := sign.Generate()
 	if err != nil {
@@ -1053,13 +1053,13 @@ func TestFetchBottleUsesCacheButTrustsTheRegistry(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	pushSignedBottle(t, rc, "c.test", kp, body, true)
-	pushSignedBottle(t, cc, "c.test", kp, body, true)
+	pushSignedArtifact(t, rc, "c.test", kp, body, true)
+	pushSignedArtifact(t, cc, "c.test", kp, body, true)
 
 	r := Resolved{Project: "c.test", Version: ParseVer("1.0.0")}
 	read := func(what string) []byte {
 		t.Helper()
-		f, _, _, err := fetchBottle(r, "linux", "x86-64")
+		f, _, _, err := fetchArtifact(r, "linux", "x86-64")
 		if err != nil {
 			t.Fatalf("%s: %v", what, err)
 		}
@@ -1086,12 +1086,12 @@ func TestFetchBottleUsesCacheButTrustsTheRegistry(t *testing.T) {
 	// instead. This is the property that makes the cache safe to add at all:
 	// it is an optimisation, never an authority.
 	other := newFakeRegistry(t, false)
-	oc, err := NewOCIClient(other.base("go-zpkg/bottles"))
+	oc, err := NewOCIClient(other.base("go-zpkg/artifacts"))
 	if err != nil {
 		t.Fatal(err)
 	}
-	pushSignedBottle(t, oc, "c.test", kp, makeGzTarball("tampered"), true)
-	CacheBase = other.base("go-zpkg/bottles")
+	pushSignedArtifact(t, oc, "c.test", kp, makeGzTarball("tampered"), true)
+	CacheBase = other.base("go-zpkg/artifacts")
 	resetOCICache()
 	if !bytes.Equal(read("tampered cache"), body) {
 		t.Error("a cache serving different bytes was trusted")
@@ -1146,18 +1146,18 @@ func TestFetchRuntimeEnvPlatformBlock(t *testing.T) {
 
 // TestPickVersionForTriesEveryTagSpelling: our registry carries more than one
 // spelling of the same version, and they do not hold the same platforms.
-// gnu.org/tar has the linux bottles under `1.35` and the darwin ones under
+// gnu.org/tar has the linux artifacts under `1.35` and the darwin ones under
 // `1.35.0`; selectVersions collapses both to ONE candidate, so the spelling
 // that wins may be the one lacking this platform. Checking only it reported
 //
 //	no version of gnu.org/tar satisfies "*" AND is published for linux/x86-64
 //	  (available: 1; satisfy but not published here: 1.35.0)
 //
-// while the bottles sat under the other tag — which blocked every recipe
+// while the artifacts sat under the other tag — which blocked every recipe
 // depending on tar.
 func TestPickVersionForTriesEveryTagSpelling(t *testing.T) {
 	fr := newFakeRegistry(t, false)
-	base := fr.base("go-zpkg/bottles")
+	base := fr.base("go-zpkg/artifacts")
 	old := DistBase
 	DistBase = base
 	resetOCICache()
@@ -1242,18 +1242,18 @@ func makeGzTarballAt(path, body string) []byte {
 	return buf.Bytes()
 }
 
-// TestInstallForBottlePublishedUnderAnotherSpelling: the directory INSIDE a
-// bottle is named after the tag it was published under, which is not always how
+// TestInstallForArtifactPublishedUnderAnotherSpelling: the directory INSIDE a
+// artifact is named after the tag it was published under, which is not always how
 // we spell the version. gnu.org/tar is `1.35` for linux and `1.35.0` for darwin,
-// so the linux bottle unpacks to v1.35 while the resolved version reads 1.35.0
+// so the linux artifact unpacks to v1.35 while the resolved version reads 1.35.0
 // and the install died with
 //
 //	rename /pkgx/.tmp-…/gnu.org/tar/v1.35.0 …: no such file or directory
 //
 // after PickVersionFor had correctly found the linux tag.
-func TestInstallForBottlePublishedUnderAnotherSpelling(t *testing.T) {
+func TestInstallForArtifactPublishedUnderAnotherSpelling(t *testing.T) {
 	fr := newFakeRegistry(t, false)
-	base := fr.base("go-zpkg/bottles")
+	base := fr.base("go-zpkg/artifacts")
 	old := DistBase
 	DistBase = base
 	resetOCICache()
@@ -1264,7 +1264,7 @@ func TestInstallForBottlePublishedUnderAnotherSpelling(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	// A bottle whose payload is spelled v1.35, published under tag 1.35.
+	// An artifact whose payload is spelled v1.35, published under tag 1.35.
 	if _, err := c.PushWithReferrers("t.test", "1.35", "linux", "x86-64",
 		makeGzTarballAt("t.test/v1.35/bin/t", "x"), ".tar.gz", nil); err != nil {
 		t.Fatal(err)
@@ -1279,13 +1279,13 @@ func TestInstallForBottlePublishedUnderAnotherSpelling(t *testing.T) {
 	// ⛔ INSTALLED UNDER THE RESOLVED VERSION, NOT THE ARCHIVE'S SPELLING.
 	// gnu.org/tar is published as `1.35` for linux and `1.35.0` for darwin,
 	// so the tarball's internal directory and the version a caller asked for
-	// can disagree. The install used to keep the bottle's own spelling as
+	// can disagree. The install used to keep the artifact's own spelling as
 	// the real directory and link the canonical one to it — two paths, both
 	// naming a version.
 	//
 	// There is one path now, and it is the resolved version with the build's
 	// hash. The archive's internal spelling is not preserved, and for a
-	// bottle whose own rpaths name it that would matter — but a bottle built
+	// artifact whose own rpaths name it that would matter — but an artifact built
 	// with a hashed prefix names the hashed prefix, and those are the only
 	// ones installed from here on.
 	p := StorePrefix(dir, "t.test", ParseVer("1.35.0"))

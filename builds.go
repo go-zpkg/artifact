@@ -1,4 +1,4 @@
-package bottle
+package artifact
 
 import (
 	"fmt"
@@ -27,7 +27,7 @@ type Build struct {
 	// Published says the registry carries it.
 	Published bool
 	// Spec is what the build IS, read from its manifest. Zero when the
-	// registry could not be asked, when the bottle predates identities, or
+	// registry could not be asked, when the artifact predates identities, or
 	// when it was only mirrored — all three are "nothing records what this
 	// was built from", which a caller must say rather than show as blank.
 	//
@@ -39,7 +39,7 @@ type Build struct {
 	// the zero time when it is not installed.
 	//
 	// ⛔ IT IS NOT A BUILD DATE AND MUST NOT BE SHOWN AS ONE. A published
-	// bottle has no recoverable build date — the timestamp is pinned so a
+	// artifact has no recoverable build date — the timestamp is pinned so a
 	// re-publish is byte-identical. This is when you got it. See BuildOrder.
 	InstalledAt time.Time
 	// Builder is what made this build, from the in-toto provenance —
@@ -47,9 +47,9 @@ type Build struct {
 	// it.
 	//
 	// ⛔ IT IS NOT IN THE HASH, ON PURPOSE, AND THAT IS WHY IT HAS TO BE
-	// SHOWN. A zbk release must not re-address every bottle in the registry
+	// SHOWN. A zbk release must not re-address every artifact in the registry
 	// — Nix and Spack take the same position about their own builders — so
-	// two bottles built by different factories from identical inputs share
+	// two artifacts built by different factories from identical inputs share
 	// an identity. The only way a reader can tell them apart is this field,
 	// which means a listing that omits it has thrown away the answer to
 	// "with what was this built?".
@@ -139,7 +139,7 @@ func BuildsOf(project, version, dir, osn, arch string) ([]Build, error) {
 // are what the caller asked for; refusing the whole answer because one
 // manifest would not parse would trade a complete list for none. The caller
 // says "nothing recorded" for the rows it could not describe, which is true
-// whether the bottle predates identities or its manifest was unreadable.
+// whether the artifact predates identities or its manifest was unreadable.
 //
 // ⛔ AND IT IS A FEW FETCHES PER BUILD, NOT PER VERSION. That is the cost of
 // the question: each build costs its manifest, its referrers listing and one
@@ -159,7 +159,7 @@ func describeBuilds(builds []Build, project, osn, arch string) {
 			}
 		}
 		// The tag the build was published under: the version, plus the hash
-		// when it has one. A bottle from before identities has no suffix,
+		// when it has one. An artifact from before identities has no suffix,
 		// and asking for one would 404 a tag that exists.
 		tag := builds[i].Version.Raw
 		if h := builds[i].Hash(); h != "" {

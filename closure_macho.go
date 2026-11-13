@@ -1,4 +1,4 @@
-package bottle
+package artifact
 
 import (
 	"debug/macho"
@@ -25,7 +25,7 @@ const (
 
 // MachoNeeded is what a Mach-O file loads. It is the darwin counterpart of
 // ELF's DT_NEEDED, and it lives here rather than in a build tool because the
-// closure needs it too: bk reads it to rewrite a reference, bottle reads it to
+// closure needs it too: bk reads it to rewrite a reference, artifact reads it to
 // find out whether that reference resolves.
 //
 // A file that is not a Mach-O is not an error worth propagating — a store is
@@ -133,9 +133,9 @@ var storeRefRE = regexp.MustCompile(`^@rpath/(.+?)/(abi-([^/]+)|v[0-9][^/]*)/(.+
 // the reference does not stay inside the store.
 //
 // ⛔ THE REFERENCE IS UNTRUSTED. It is read from the load commands of a
-// downloaded Mach-O, so `@rpath/../../../../etc/passwd` is a thing a bottle
+// downloaded Mach-O, so `@rpath/../../../../etc/passwd` is a thing an artifact
 // can carry. The caller stats <dir>/<rel> and treats an existing file as
-// "already satisfied" — so without this, a bottle could point at any path the
+// "already satisfied" — so without this, an artifact could point at any path the
 // process can see and have its closure declared complete on the strength of a
 // file that is not a library and is not in the store.
 //
@@ -238,7 +238,7 @@ func unresolvedRefs(prefixes []string, dir string) []want {
 					//
 					// This does not resolve them; naming a project from a
 					// bare soname needs the index provideMachoSoname reads
-					// (go-zpkg/bottle#166). It stops the gap being silent,
+					// (go-zpkg/artifact#166). It stops the gap being silent,
 					// which is the part that let it reach 1266.
 					warn("%s is NEEDED, is not in the store, and names no project directory — "+
 						"this cannot look for a provider, so it will not resolve", ref)
@@ -272,7 +272,7 @@ func unresolvedRefs(prefixes []string, dir string) []want {
 	return out
 }
 
-// completeMachO pulls the bottle that provides each soname the store is asked
+// completeMachO pulls the artifact that provides each soname the store is asked
 // for and does not have, so a closure runs on a FROM-scratch image.
 //
 // Two versions of one project can be installed at once, which is the point: a
@@ -323,13 +323,13 @@ func completeMachO(closure []Resolved, dir, osn, arch string) ([]Resolved, error
 }
 
 // provideMachoSoname installs the newest published version of w.project whose
-// bottle declares w.soname, or says why it could not.
+// artifact declares w.soname, or says why it could not.
 //
-// It asks the MANIFEST, not the bottle: publish records the sonames a bottle
+// It asks the MANIFEST, not the artifact: publish records the sonames an artifact
 // ships as an annotation, so choosing between forty versions costs forty small
-// reads instead of forty downloads. A bottle published before that annotation
+// reads instead of forty downloads. An artifact published before that annotation
 // existed answers nothing, and is skipped rather than downloaded on the chance
-// — an old bottle is also one that predates the ABI links this depends on.
+// — an old artifact is also one that predates the ABI links this depends on.
 func provideMachoSoname(w want, dir string) (Resolved, bool) {
 	vs, err := machoVersions(w.project)
 	if err != nil {
@@ -337,7 +337,7 @@ func provideMachoSoname(w want, dir string) (Resolved, bool) {
 		return Resolved{}, false
 	}
 	osn, arch := HostSlug()
-	// FetchVersions answers ascending; the newest bottle that declares the
+	// FetchVersions answers ascending; the newest artifact that declares the
 	// soname is the one to hold the line.
 	const maxTry = 40
 	for i, n := len(vs)-1, 0; i >= 0 && n < maxTry; i, n = i-1, n+1 {
@@ -358,9 +358,9 @@ func provideMachoSoname(w want, dir string) (Resolved, bool) {
 
 // The Mach-O magics, in both byte orders. A universal ("fat") file holds
 // several architectures and debug/macho.Open declines it — which is why it is
-// named here rather than lumped in with everything else: our own bottles are
+// named here rather than lumped in with everything else: our own artifacts are
 // built one architecture at a time and carry none (measured: 770 executables
-// across 29 closures, zero fat), but a bottle mirrored from elsewhere could,
+// across 29 closures, zero fat), but an artifact mirrored from elsewhere could,
 // and its references would otherwise be silently invisible.
 type machoKind string
 

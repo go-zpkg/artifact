@@ -1,6 +1,6 @@
 //go:build !js
 
-package bottle
+package artifact
 
 import (
 	"errors"
@@ -17,7 +17,7 @@ import (
 // Found by building that image and running it:
 //
 //	pkgx: catalog update: blob sha256:6fc3caf…: temp file:
-//	      open /tmp/bottle-blob-1245446855: no such file or directory
+//	      open /tmp/artifact-blob-1245446855: no such file or directory
 func TestABlobIsStagedInsideTheStore(t *testing.T) {
 	store := t.TempDir()
 	t.Setenv("ZPKG_DIR", store)

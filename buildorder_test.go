@@ -1,4 +1,4 @@
-package bottle
+package artifact
 
 import (
 	"os"
@@ -70,8 +70,8 @@ func TestByInstalledOrdersWhatThisMachineHasAndPutsTheRestLast(t *testing.T) {
 
 // ⛔⛔ THE ABSENCE OF A BUILD DATE IS EXPLAINED, NOT LEFT TO LOOK LIKE AN
 // OVERSIGHT. A reader who asks to sort by date is asking for something a
-// published bottle cannot carry: the timestamp is pinned so a re-publish is
-// byte-identical, so every bottle has the SAME instant.
+// published artifact cannot carry: the timestamp is pinned so a re-publish is
+// byte-identical, so every artifact has the SAME instant.
 func TestThereIsNoDateKeyAndTheReasonIsSayable(t *testing.T) {
 	if _, err := ParseBuildOrder("date"); err == nil {
 		t.Fatal("a date key was accepted; there is no build date to sort by")
@@ -100,7 +100,7 @@ func TestInstalledAtReadsTheDirectoryAndNotItsContents(t *testing.T) {
 	if err := os.MkdirAll(filepath.Join(build, "lib"), 0o755); err != nil {
 		t.Fatal(err)
 	}
-	// A file stamped in 2001, as an extracted bottle's files are.
+	// A file stamped in 2001, as an extracted artifact's files are.
 	f := filepath.Join(build, "lib", "libz.so")
 	if err := os.WriteFile(f, []byte("x"), 0o644); err != nil {
 		t.Fatal(err)

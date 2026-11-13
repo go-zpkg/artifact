@@ -1,4 +1,4 @@
-package bottle
+package artifact
 
 import (
 	"bytes"
@@ -141,10 +141,10 @@ func TestTheNoteNamesEachWithdrawnBuildAndSaysItStillResolves(t *testing.T) {
 	if WithdrawnNote(proj, []Build{buildOf(ver, "rnp44isdgdtzxcit")}) != "" {
 		t.Error("a note was printed with nothing to report")
 	}
-	// A hashless bottle can be withdrawn too, and must be nameable in the note.
+	// A hashless artifact can be withdrawn too, and must be nameable in the note.
 	withList(t, map[string][]Withdrawal{proj: {{Version: ver, Because: "CVE-X"}}})
 	if n := WithdrawnNote(proj, []Build{buildOf(ver, "")}); !strings.Contains(n, "(none)") {
-		t.Errorf("note = %q, want the hashless bottle named", n)
+		t.Errorf("note = %q, want the hashless artifact named", n)
 	}
 }
 

@@ -1,4 +1,4 @@
-package bottle
+package artifact
 
 import (
 	"fmt"
@@ -21,7 +21,7 @@ var Exec func(argv0 string, argv []string, env []string) error
 // ResolveBinPath maps a logical bin path (…/bin/foo) to the file that actually
 // exists on disk. On Windows it prefers "foo.exe" (the PE image the toolchain
 // produces), on a wasm host (wasip1, js) "foo.wasm" (the module a wasip1/wasm
-// bottle ships under bin/), falling back to the bare name; on UNIX it is the
+// artifact ships under bin/), falling back to the bare name; on UNIX it is the
 // identity. This keeps BinNames/PrimaryBin returning logical, extension-free
 // names while the run/stub sites resolve to the real executable.
 func ResolveBinPath(bin string) string {
@@ -173,7 +173,7 @@ func InstalledVersions(project, dir string) []string {
 // directory does not record one).
 //
 // InstalledVersions answers "which releases do I have"; this answers "which
-// bottles do I have", and the two stopped being the same question the moment
+// artifacts do I have", and the two stopped being the same question the moment
 // a path could hold more than one build of a version.
 //
 // Builds of ONE version keep the order their directories were read in, which
@@ -204,15 +204,15 @@ func InstalledBuilds(project, dir string) []Ver {
 	return vs
 }
 
-// Stage describes where a closure's bottles LIVE while stubs are written and
+// Stage describes where a closure's artifacts LIVE while stubs are written and
 // where they will live when the stubs RUN. The two differ whenever a rootfs is
 // assembled somewhere other than the machine that will boot it — the whole
 // point of staging.
 type Stage struct {
-	// Dir is where the bottles are on the machine writing the stubs. Files are
+	// Dir is where the artifacts are on the machine writing the stubs. Files are
 	// checked for existence here.
 	Dir string
-	// GuestDir is the path those same bottles will have where the stubs run —
+	// GuestDir is the path those same artifacts will have where the stubs run —
 	// "/pkgx" for an image staged under /tmp/rootfs. Empty means Dir: the
 	// staging machine IS the running machine (pkgm's case).
 	GuestDir string
@@ -225,7 +225,7 @@ type Stage struct {
 
 // StubBins writes a small env-setting shell stub into <prefix>/bin for every
 // binary in the closure, mirroring the reference pkgm: the stub exports the
-// closure's LD_LIBRARY_PATH and exec's the real bottle binary.
+// closure's LD_LIBRARY_PATH and exec's the real artifact binary.
 func StubBins(closure []Resolved, dir, prefix string) (int, error) {
 	return StubBinsStaged(closure, Stage{Dir: dir, Prefix: prefix})
 }
@@ -233,7 +233,7 @@ func StubBins(closure []Resolved, dir, prefix string) (int, error) {
 // StubBinsStaged is StubBins for a rootfs being assembled elsewhere.
 //
 // A stub is a shell script holding ABSOLUTE paths — the closure's
-// LD_LIBRARY_PATH and the bottle binary to exec. Written with the staging
+// LD_LIBRARY_PATH and the artifact binary to exec. Written with the staging
 // machine's paths, every one of them is wrong the moment the rootfs boots:
 // they point at /tmp/whatever-the-builder-used, a directory the guest does not
 // have. So the paths baked in come from GuestDir while the existence checks
@@ -337,7 +337,7 @@ var loaderDirs = []string{"/lib", "/lib64"}
 
 // SetupScratchRootfs makes the pkgx loader and a shell available at their
 // canonical absolute paths (best-effort). On a FROM-scratch image this lets
-// every bottle ELF — the one we exec AND any child processes it spawns —
+// every artifact ELF — the one we exec AND any child processes it spawns —
 // resolve its PT_INTERP=/lib/ld-linux natively, and (when shellPath is set)
 // lets "#!/bin/sh" wrapper scripts resolve to the pkgx bash we installed. On a
 // normal system these paths already exist, so os.Symlink fails and is ignored
@@ -476,9 +476,9 @@ func SetupScratchRootfsAt(root, loaderName, loaderTarget, shellTarget string) er
 //     `/…/gnu.org/glibc/v2.44+brewing/lib/glibc-2.44/ld64.so.1`.
 //
 // ppc64le, riscv64 and loong64 are deliberately ABSENT. bk is TESTED on them
-// and no bottle is BUILT for them, so there is no artefact here to read a name
+// and no artifact is BUILT for them, so there is no artefact here to read a name
 // out of — and a name deduced from a pattern is exactly what this comment
-// exists to warn against. Add one when a bottle for that architecture can be
+// exists to warn against. Add one when an artifact for that architecture can be
 // read.
 func LoaderNameFor(arch string) string {
 	return map[string]string{

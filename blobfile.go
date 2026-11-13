@@ -1,4 +1,4 @@
-package bottle
+package artifact
 
 import (
 	"context"

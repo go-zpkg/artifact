@@ -1,4 +1,4 @@
-package bottle
+package artifact
 
 import (
 	"context"
@@ -17,7 +17,7 @@ func TestIndexComposedFromPlatformTags(t *testing.T) {
 	t.Setenv("ZPKG_VERIFY", "0")
 	fr := newFakeRegistry(t, false)
 	defer fr.close()
-	c, err := NewOCIClient(fr.base("go-zpkg/bottles"))
+	c, err := NewOCIClient(fr.base("go-zpkg/artifacts"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -61,7 +61,7 @@ func TestPlatformManifestsSurvivesABadTag(t *testing.T) {
 	t.Setenv("ZPKG_VERIFY", "0")
 	fr := newFakeRegistry(t, false)
 	defer fr.close()
-	c, err := NewOCIClient(fr.base("go-zpkg/bottles"))
+	c, err := NewOCIClient(fr.base("go-zpkg/artifacts"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -71,7 +71,7 @@ func TestPlatformManifestsSurvivesABadTag(t *testing.T) {
 	fr.mu.Lock()
 	// A platform tag that RESOLVES but whose name carries no arch: it must be
 	// skipped on its shape, not on a failed lookup.
-	repoKey := "go-zpkg/bottles/hello.test"
+	repoKey := "go-zpkg/artifacts/hello.test"
 	good := fr.manifests[repoKey+"|1.2.3--linux-x86-64"]
 	fr.manifests[repoKey+"|1.2.3--noarch"] = good
 	fr.mtypes[repoKey+"|1.2.3--noarch"] = fr.mtypes[repoKey+"|1.2.3--linux-x86-64"]
@@ -92,7 +92,7 @@ func TestPlatformManifestsWhenTagsCannotBeListed(t *testing.T) {
 	t.Setenv("ZPKG_VERIFY", "0")
 	fr := newFakeRegistry(t, false)
 	defer fr.close()
-	c, err := NewOCIClient(fr.base("go-zpkg/bottles"))
+	c, err := NewOCIClient(fr.base("go-zpkg/artifacts"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -128,7 +128,7 @@ func TestPushFailsWhenThePlatformTagCannotBeWritten(t *testing.T) {
 		}
 		return 0, false
 	}
-	c, err := NewOCIClient(fr.base("go-zpkg/bottles"))
+	c, err := NewOCIClient(fr.base("go-zpkg/artifacts"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -144,7 +144,7 @@ func TestPlatformManifestsSkipsATagThatResolvesToNothing(t *testing.T) {
 	t.Setenv("ZPKG_VERIFY", "0")
 	fr := newFakeRegistry(t, false)
 	defer fr.close()
-	c, err := NewOCIClient(fr.base("go-zpkg/bottles"))
+	c, err := NewOCIClient(fr.base("go-zpkg/artifacts"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -152,7 +152,7 @@ func TestPlatformManifestsSkipsATagThatResolvesToNothing(t *testing.T) {
 		t.Fatal(err)
 	}
 	fr.mu.Lock()
-	fr.tags["go-zpkg/bottles/hello.test"]["1.2.3--linux-ppc64le"] = true // listed, never pushed
+	fr.tags["go-zpkg/artifacts/hello.test"]["1.2.3--linux-ppc64le"] = true // listed, never pushed
 	fr.mu.Unlock()
 	// Resolving it fails the way a registry fails on a dangling tag.
 	fr.hook = func(r *http.Request) (int, bool) {

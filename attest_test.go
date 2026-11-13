@@ -1,4 +1,4 @@
-package bottle
+package artifact
 
 import (
 	"errors"
@@ -9,14 +9,14 @@ import (
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 )
 
-// TestFetchAttestations: what a mirror needs to carry a bottle WITH its
+// TestFetchAttestations: what a mirror needs to carry an artifact WITH its
 // signature — the referrers verbatim, plus the per-platform annotations. A copy
 // that drops them turns fail-closed verification into a failure (or, if someone
 // then disables verification, into a silent downgrade).
 func TestFetchAttestations(t *testing.T) {
 	fr := newFakeRegistry(t, false)
 	defer fr.close()
-	withDist(t, fr.base("go-zpkg/bottles"))
+	withDist(t, fr.base("go-zpkg/artifacts"))
 	c, err := NewOCIClient(DistBase)
 	if err != nil {
 		t.Fatal(err)
@@ -62,7 +62,7 @@ func TestFetchAttestations(t *testing.T) {
 func TestFetchAttestationsErrors(t *testing.T) {
 	fr := newFakeRegistry(t, false)
 	defer fr.close()
-	withDist(t, fr.base("go-zpkg/bottles"))
+	withDist(t, fr.base("go-zpkg/artifacts"))
 	c, err := NewOCIClient(DistBase)
 	if err != nil {
 		t.Fatal(err)
@@ -73,7 +73,7 @@ func TestFetchAttestationsErrors(t *testing.T) {
 	if _, _, err := c.FetchAttestations("absent.test", "1.0", "linux", "x86-64"); err == nil {
 		t.Error("want an error for an unpublished version")
 	}
-	// a bottle with no attestations at all is not an error — it is simply
+	// an artifact with no attestations at all is not an error — it is simply
 	// unsigned, and the caller's verification policy decides.
 	if err := c.Push("bare.test", "1.0", "linux", "x86-64", makeGzTarball("x"), ExtTarGz); err != nil {
 		t.Fatal(err)
@@ -117,7 +117,7 @@ func TestReferrerFrom(t *testing.T) {
 
 // TestFetchAttestationsRegistryFaults: every step of the walk can fail, and each
 // failure must surface. A mirror that swallowed one would publish a copy with
-// fewer attestations than the original — an unsigned bottle wearing the same
+// fewer attestations than the original — an unsigned artifact wearing the same
 // name.
 func TestFetchAttestationsRegistryFaults(t *testing.T) {
 	for _, tc := range []struct {
@@ -142,7 +142,7 @@ func TestFetchAttestationsRegistryFaults(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			fr := newFakeRegistry(t, false)
 			defer fr.close()
-			withDist(t, fr.base("go-zpkg/bottles"))
+			withDist(t, fr.base("go-zpkg/artifacts"))
 			c, err := NewOCIClient(DistBase)
 			if err != nil {
 				t.Fatal(err)
@@ -152,7 +152,7 @@ func TestFetchAttestationsRegistryFaults(t *testing.T) {
 				[]Referrer{{ArtifactType: "application/vnd.cyclonedx+json", MediaType: "application/json", Blob: []byte(`{}`)}}); err != nil {
 				t.Fatal(err)
 			}
-			// the fault arms only once the bottle is in place, so the walk starts
+			// the fault arms only once the artifact is in place, so the walk starts
 			// normally and breaks exactly where the case says.
 			fr.hook = func(r *http.Request) (int, bool) {
 				return http.StatusInternalServerError, tc.when(r.URL.Path)

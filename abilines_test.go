@@ -1,4 +1,4 @@
-package bottle
+package artifact
 
 import (
 	"fmt"
@@ -76,11 +76,11 @@ func TestPickABILinesRefusesWhenSonamesOverlap(t *testing.T) {
 	}
 }
 
-// A bottle that declares nothing is UNKNOWN, not empty. Guessing here would
+// An artifact that declares nothing is UNKNOWN, not empty. Guessing here would
 // produce exactly the failure the mechanism exists to prevent, so the refusal
-// stands — which also means an old bottle cannot be split until it is
+// stands — which also means an old artifact cannot be split until it is
 // republished.
-func TestPickABILinesRefusesAnUndeclaredBottle(t *testing.T) {
+func TestPickABILinesRefusesAnUndeclaredArtifact(t *testing.T) {
 	oldP, oldA := pickOne, abiAnnotations
 	defer func() { pickOne, abiAnnotations = oldP, oldA }()
 	pickOne = fakePick("1.0.0", "2.0.0")
@@ -88,7 +88,7 @@ func TestPickABILinesRefusesAnUndeclaredBottle(t *testing.T) {
 
 	_, err := pickABILines("a.org", []string{"~1", "~2"}, "darwin", "aarch64")
 	if err == nil || !strings.Contains(err.Error(), "declares no sonames") {
-		t.Fatalf("err = %v, want a refusal naming the undeclared bottle", err)
+		t.Fatalf("err = %v, want a refusal naming the undeclared artifact", err)
 	}
 }
 

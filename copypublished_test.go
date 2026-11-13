@@ -1,4 +1,4 @@
-package bottle
+package artifact
 
 import (
 	"context"
@@ -11,14 +11,14 @@ import (
 
 // ⛔⛔ THE ASSERTION IS THAT THE COPY STILL VERIFIES, NOT THAT BYTES ARRIVED.
 //
-// "The bottle is in the new namespace" is what the broken release of
+// "The artifact is in the new namespace" is what the broken release of
 // v0.64.0–v0.68.0 would also have reported, had anything reported anything: a
 // manifest can copy perfectly and leave its signature behind, because a cosign
 // signature is a REFERRER and not a child of the manifest. A copy checked by
-// pulling the tarball back would pass on a bottle that `zpkgs install` then
+// pulling the tarball back would pass on an artifact that `zpkgs install` then
 // refuses, and refusing at install time is the expensive place to find out.
 //
-// So the destination is checked with VerifyBottle — the same call the install
+// So the destination is checked with VerifyArtifact — the same call the install
 // path makes — and only after that is the digest compared.
 func TestCopyPublishedCarriesTheSignature(t *testing.T) {
 	fr := newFakeRegistry(t, false)
@@ -43,13 +43,13 @@ func TestCopyPublishedCarriesTheSignature(t *testing.T) {
 	SigningPublicKey = kp.PublicKeyString()
 	defer func() { SigningPublicKey = old }()
 
-	tarball := makeGzTarball("bottle-body")
-	pushSignedBottle(t, src, "zlib.net", kp, tarball, true)
+	tarball := makeGzTarball("artifact-body")
+	pushSignedArtifact(t, src, "zlib.net", kp, tarball, true)
 
 	// The destination holds nothing yet. Asserted, because a test that cannot
 	// tell an empty destination from a full one is the defect it is here for.
-	if err := dst.VerifyBottle("zlib.net", "1.0.0", "linux", "x86-64", tarball); err == nil {
-		t.Fatal("the destination namespace verified a bottle before anything was copied")
+	if err := dst.VerifyArtifact("zlib.net", "1.0.0", "linux", "x86-64", tarball); err == nil {
+		t.Fatal("the destination namespace verified an artifact before anything was copied")
 	}
 
 	desc, err := CopyPublished(context.Background(), src, dst, "zlib.net", "1.0.0")
@@ -58,18 +58,18 @@ func TestCopyPublishedCarriesTheSignature(t *testing.T) {
 	}
 
 	// The install path's own check, against the destination.
-	if err := dst.VerifyBottle("zlib.net", "1.0.0", "linux", "x86-64", tarball); err != nil {
-		t.Fatalf("copied bottle does not verify in the new namespace: %v", err)
+	if err := dst.VerifyArtifact("zlib.net", "1.0.0", "linux", "x86-64", tarball); err != nil {
+		t.Fatalf("copied artifact does not verify in the new namespace: %v", err)
 	}
 
 	// And the digest is the SAME string on both sides — which is why the
 	// signature still commits to it (payloadCommitsTo reads
 	// critical.image.docker-manifest-digest and nothing about the namespace).
-	from, err := src.BottleDigest("zlib.net", "1.0.0", "linux", "x86-64")
+	from, err := src.ArtifactDigest("zlib.net", "1.0.0", "linux", "x86-64")
 	if err != nil {
 		t.Fatal(err)
 	}
-	to, err := dst.BottleDigest("zlib.net", "1.0.0", "linux", "x86-64")
+	to, err := dst.ArtifactDigest("zlib.net", "1.0.0", "linux", "x86-64")
 	if err != nil {
 		t.Fatal(err)
 	}

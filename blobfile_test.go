@@ -1,6 +1,6 @@
 //go:build !js
 
-package bottle
+package artifact
 
 import (
 	"context"
@@ -110,7 +110,7 @@ func TestFetchBlobFileRangeIgnoredMidTransfer(t *testing.T) {
 }
 
 // TestPullFileDoesNotBufferTheBlob is the whole point, measured: pulling a
-// bottle must not cost the bottle's size in heap. The in-memory Pull is the
+// artifact must not cost the artifact's size in heap. The in-memory Pull is the
 // control — it necessarily does.
 func TestPullFileDoesNotBufferTheBlob(t *testing.T) {
 	t.Setenv("ZPKG_VERIFY", "0")
@@ -243,7 +243,7 @@ func TestFetchBlobFileErrors(t *testing.T) {
 // TestVerifySignatureDigestMatchesByteForm: the digest form and the bytes form
 // must agree, or the streaming install would be verifying something else.
 func TestVerifySignatureDigestMatchesByteForm(t *testing.T) {
-	tarball := []byte("a bottle")
+	tarball := []byte("an artifact")
 	sum := sha256.Sum256(tarball)
 	digest := "sha256:" + hex.EncodeToString(sum[:])
 	payload := []byte(`{"critical":{"image":{"docker-manifest-digest":"` + digest + `"}}}`)
@@ -384,7 +384,7 @@ func TestPullSurfacesFetchFailure(t *testing.T) {
 		t.Fatal(err)
 	}
 	if _, _, err := c.Pull("absent.org", "9.9.9", "linux", "aarch64"); err == nil {
-		t.Fatal("want an error for a bottle that is not there")
+		t.Fatal("want an error for an artifact that is not there")
 	}
 }
 

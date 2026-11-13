@@ -1,4 +1,4 @@
-package bottle
+package artifact
 
 import (
 	"os"
@@ -128,13 +128,13 @@ func TestRetiredKeysStayTrusted(t *testing.T) {
 	}
 
 	const digest = "sha256:aa"
-	// A bottle signed only by the RETIRED key still verifies.
+	// An artifact signed only by the RETIRED key still verifies.
 	names, untrusted, err := ts.Count(digest, []Attestation{signFor(t, old, digest, false)})
 	if err != nil || untrusted != 0 || strings.Join(names, ",") != "go-zpkg-2025" {
-		t.Errorf("a bottle signed by the retired key: names=%v untrusted=%d err=%v", names, untrusted, err)
+		t.Errorf("an artifact signed by the retired key: names=%v untrusted=%d err=%v", names, untrusted, err)
 	}
 
-	// ⛔ AND AN OVERLAP BOTTLE COUNTS AS TWO. During a rotation the publisher
+	// ⛔ AND AN OVERLAP ARTIFACT COUNTS AS TWO. During a rotation the publisher
 	// signs with both; a scheme that discounted the retired key would make
 	// that look like one signer and a threshold of two unmeetable exactly
 	// while rotating.
@@ -143,7 +143,7 @@ func TestRetiredKeysStayTrusted(t *testing.T) {
 		signFor(t, old, digest, true),
 	})
 	if err != nil || len(names) != 2 {
-		t.Errorf("overlap bottle: names=%v err=%v", names, err)
+		t.Errorf("overlap artifact: names=%v err=%v", names, err)
 	}
 
 	// A typo in the retired list is skipped, not fatal: the current key must
@@ -157,7 +157,7 @@ func TestRetiredKeysStayTrusted(t *testing.T) {
 
 // ⛔⛔ REVOKING IS NOT RETIRING. A retired key's signatures are still ours; a
 // revoked key's cannot be told from a forgery, because somebody else may hold
-// it and no bottle carries a date that would say which side of the compromise
+// it and no artifact carries a date that would say which side of the compromise
 // it falls on.
 func TestRevokedKeySignsForNothing(t *testing.T) {
 	current, leaked := mustGenerate(t), mustGenerate(t)
@@ -194,14 +194,14 @@ func TestRevokedKeySignsForNothing(t *testing.T) {
 		t.Errorf("a revoked key counted towards the threshold: %v", names)
 	}
 	// ⛔ AND IT IS NOT "untrusted". A stranger's signature is noise anybody
-	// can make; OUR revoked key on a bottle is a fact about our supply chain.
+	// can make; OUR revoked key on an artifact is a fact about our supply chain.
 	if untrusted != 0 || len(revoked) != 1 || revoked[0].Name != "go-zpkg-2025" {
 		t.Errorf("untrusted=%d revoked=%+v — a revoked key must be reported as itself", untrusted, revoked)
 	}
 
 	rep := SignatureReport{Signers: names, Untrusted: untrusted, Revoked: revoked, Threshold: 1}
 	if rep.OK() {
-		t.Fatal("a bottle signed only by a revoked key passed")
+		t.Fatal("an artifact signed only by a revoked key passed")
 	}
 	if e := rep.Err(); e == nil || !strings.Contains(e.Error(), "REVOKED key go-zpkg-2025") ||
 		!strings.Contains(e.Error(), "CI secret exposed") {
@@ -214,7 +214,7 @@ func TestRevokedKeySignsForNothing(t *testing.T) {
 		}
 	}
 
-	// A bottle signed by the CURRENT key and the revoked one still installs
+	// An artifact signed by the CURRENT key and the revoked one still installs
 	// — one good signature meets a threshold of one — but the note says the
 	// revoked signature is there, because the verdict and the inventory are
 	// different questions.
@@ -227,7 +227,7 @@ func TestRevokedKeySignsForNothing(t *testing.T) {
 	}
 	rep = SignatureReport{Signers: names, Revoked: revoked, Threshold: 1}
 	if !rep.OK() || rep.RevokedNote() == "" {
-		t.Errorf("mixed bottle: ok=%v note=%q", rep.OK(), rep.RevokedNote())
+		t.Errorf("mixed artifact: ok=%v note=%q", rep.OK(), rep.RevokedNote())
 	}
 
 	// No revoked keys at all: no note, and nothing in the verdict.
@@ -295,7 +295,7 @@ func TestLoadTrustSetThreshold(t *testing.T) {
 	}
 
 	// ⛔ A threshold nobody could meet is a configuration error, said here —
-	// not an install failure that blames the bottle.
+	// not an install failure that blames the artifact.
 	newTrustEnv(t, map[string]string{TrustThresholdEnv: "3"})
 	_, err = LoadTrustSet()
 	if err == nil || !strings.Contains(err.Error(), "cannot be met") {
@@ -313,7 +313,7 @@ func TestLoadTrustSetThreshold(t *testing.T) {
 	}
 }
 
-// signFor makes the attestation one keypair would attach to a bottle digest.
+// signFor makes the attestation one keypair would attach to an artifact digest.
 func signFor(t *testing.T, kp *sign.Keypair, digest string, withHint bool) Attestation {
 	t.Helper()
 	payload, err := sign.SimpleSigningPayload("pkg:pkgx/x", digest)
@@ -473,7 +473,7 @@ func TestTrustSetVerifyBounds(t *testing.T) {
 	}
 }
 
-// pushTwoSigned pushes one bottle carrying a signature from each keypair, in
+// pushTwoSigned pushes one artifact carrying a signature from each keypair, in
 // the order given.
 func pushTwoSigned(t *testing.T, c *OCIClient, project string, tarball []byte, kps ...*sign.Keypair) {
 	t.Helper()
@@ -504,26 +504,26 @@ func pushTwoSigned(t *testing.T, c *OCIClient, project string, tarball []byte, k
 	}
 }
 
-// ⛔⛔ THE WITNESS. Before the trust set, VerifyBottleDigest took the FIRST
-// signature referrer and verified it against one pinned key. A bottle signed
+// ⛔⛔ THE WITNESS. Before the trust set, VerifyArtifactDigest took the FIRST
+// signature referrer and verified it against one pinned key. An artifact signed
 // by both builders therefore verified or failed according to the order the
 // registry served its referrers in — and the failure read as tampering.
 //
 // The arrangement is the one the old code got wrong: somebody ELSE signed
 // first, we signed second, and the client trusts only us. Taking the first
-// referrer reports a bottle our own key signed as unverifiable.
+// referrer reports an artifact our own key signed as unverifiable.
 //
 // ⛔ A SIGNATURE FROM OUTSIDE THE TRUST SET IS NOT AN ERROR, IT IS SOMEBODY
 // ELSE'S OPINION. Anyone may attach one; treating that as a reason to refuse
-// would let a stranger invalidate any bottle by signing it.
-func TestVerifyBottleIsNotOrderDependent(t *testing.T) {
+// would let a stranger invalidate any artifact by signing it.
+func TestVerifyArtifactIsNotOrderDependent(t *testing.T) {
 	ours, stranger := mustGenerate(t), mustGenerate(t)
 	pinKey(t, ours)
 	newTrustEnv(t, nil) // only our own key is trusted
 
 	fr := newFakeRegistry(t, false)
 	defer fr.close()
-	c, _ := NewOCIClient(fr.base("go-zpkg/bottles"))
+	c, _ := NewOCIClient(fr.base("go-zpkg/artifacts"))
 	tarball := makeGzTarball("stranger-first")
 	pushTwoSigned(t, c, "stranger.first", tarball, stranger, ours)
 
@@ -532,7 +532,7 @@ func TestVerifyBottleIsNotOrderDependent(t *testing.T) {
 		t.Fatal(err)
 	}
 	if verr := rep.Err(); verr != nil {
-		t.Fatalf("a bottle our own key signed was rejected: %v", verr)
+		t.Fatalf("an artifact our own key signed was rejected: %v", verr)
 	}
 	if strings.Join(rep.Signers, ",") != DefaultSignerName {
 		t.Errorf("signers = %v, want %s", rep.Signers, DefaultSignerName)
@@ -541,14 +541,14 @@ func TestVerifyBottleIsNotOrderDependent(t *testing.T) {
 		t.Errorf("the stranger's signature should be counted as untrusted, got %d", rep.Untrusted)
 	}
 	// And the install path agrees with the report.
-	if err := c.VerifyBottle("stranger.first", "1.0.0", "linux", "x86-64", tarball); err != nil {
+	if err := c.VerifyArtifact("stranger.first", "1.0.0", "linux", "x86-64", tarball); err != nil {
 		t.Errorf("install-time verification rejected it: %v", err)
 	}
 }
 
 // With a threshold of two, one builder's word is not enough — and the message
 // says who did sign, because that is the reader's next question.
-func TestVerifyBottleThresholdOfTwo(t *testing.T) {
+func TestVerifyArtifactThresholdOfTwo(t *testing.T) {
 	ours, alice := mustGenerate(t), mustGenerate(t)
 	pinKey(t, ours)
 	newTrustEnv(t, map[string]string{
@@ -558,21 +558,21 @@ func TestVerifyBottleThresholdOfTwo(t *testing.T) {
 
 	fr := newFakeRegistry(t, false)
 	defer fr.close()
-	c, _ := NewOCIClient(fr.base("go-zpkg/bottles"))
+	c, _ := NewOCIClient(fr.base("go-zpkg/artifacts"))
 
 	one := makeGzTarball("one-signer")
 	pushTwoSigned(t, c, "one.signer", one, ours)
-	err := c.VerifyBottle("one.signer", "1.0.0", "linux", "x86-64", one)
+	err := c.VerifyArtifact("one.signer", "1.0.0", "linux", "x86-64", one)
 	if err == nil {
 		t.Fatal("one signature met a threshold of two")
 	}
 	if !strings.Contains(err.Error(), DefaultSignerName) || !strings.Contains(err.Error(), "one.signer") {
-		t.Errorf("message should name the signer and the bottle: %v", err)
+		t.Errorf("message should name the signer and the artifact: %v", err)
 	}
 
 	both := makeGzTarball("two-signers")
 	pushTwoSigned(t, c, "two.signers", both, ours, alice)
-	if err := c.VerifyBottle("two.signers", "1.0.0", "linux", "x86-64", both); err != nil {
+	if err := c.VerifyArtifact("two.signers", "1.0.0", "linux", "x86-64", both); err != nil {
 		t.Fatalf("two independent signatures were rejected: %v", err)
 	}
 }
@@ -591,15 +591,15 @@ func TestInstallEnforcesTheThreshold(t *testing.T) {
 
 	fr := newFakeRegistry(t, false)
 	defer fr.close()
-	c, _ := NewOCIClient(fr.base("go-zpkg/bottles"))
+	c, _ := NewOCIClient(fr.base("go-zpkg/artifacts"))
 
-	one := ociGzBottle(t, "thr.one", "1.0.0", map[string]string{"bin/a": "x"})
+	one := ociGzArtifact(t, "thr.one", "1.0.0", map[string]string{"bin/a": "x"})
 	pushTwoSigned(t, c, "thr.one", one, ours)
-	both := ociGzBottle(t, "thr.both", "1.0.0", map[string]string{"bin/b": "x"})
+	both := ociGzArtifact(t, "thr.both", "1.0.0", map[string]string{"bin/b": "x"})
 	pushTwoSigned(t, c, "thr.both", both, ours, alice)
 
 	oldDist := DistBase
-	DistBase = fr.base("go-zpkg/bottles")
+	DistBase = fr.base("go-zpkg/artifacts")
 	resetOCICache()
 	defer func() { DistBase = oldDist; resetOCICache() }()
 
@@ -612,20 +612,20 @@ func TestInstallEnforcesTheThreshold(t *testing.T) {
 	dir := t.TempDir()
 	_, err := Install(Resolved{"thr.one", ParseVer("1.0.0")}, dir)
 	if err == nil {
-		t.Fatal("a bottle one builder signed installed under a threshold of two")
+		t.Fatal("an artifact one builder signed installed under a threshold of two")
 	}
 	if !strings.Contains(err.Error(), "requires 2") {
 		t.Errorf("install error should say what was required: %v", err)
 	}
 	if _, serr := os.Stat(filepath.Join(dir, "thr.one")); serr == nil {
-		t.Error("a refused bottle left files behind")
+		t.Error("a refused artifact left files behind")
 	}
 
 	if fresh, err := Install(Resolved{"thr.both", ParseVer("1.0.0")}, t.TempDir()); err != nil || !fresh {
-		t.Fatalf("a bottle both builders signed was refused: fresh=%v err=%v", fresh, err)
+		t.Fatalf("an artifact both builders signed was refused: fresh=%v err=%v", fresh, err)
 	}
 
-	// ⛔ AND THE CACHE IS NOT A WAY ROUND IT. fetchBottle checks a cache hit
+	// ⛔ AND THE CACHE IS NOT A WAY ROUND IT. fetchArtifact checks a cache hit
 	// against the REGISTRY's signatures, so tightening the policy after the
 	// bytes are cached still refuses them.
 	newTrustEnv(t, map[string]string{
@@ -639,17 +639,17 @@ func TestInstallEnforcesTheThreshold(t *testing.T) {
 
 // ⛔⛔ "WITH WHAT WAS THIS BUILT" HAS ONE ANSWER AND IT IS THE PROVENANCE.
 // The builder is deliberately absent from the identity — a zbk release must
-// not re-address every bottle — so two factories building identical inputs
+// not re-address every artifact — so two factories building identical inputs
 // produce the same hash, and the attestation is the only thing that tells
 // them apart. A reader who cannot see it cannot audit the chain at all.
-func TestProvenanceNamesWhatBuiltTheBottle(t *testing.T) {
+func TestProvenanceNamesWhatBuiltTheArtifact(t *testing.T) {
 	ours := mustGenerate(t)
 	pinKey(t, ours)
 	newTrustEnv(t, nil)
 
 	fr := newFakeRegistry(t, false)
 	defer fr.close()
-	c, _ := NewOCIClient(fr.base("go-zpkg/bottles"))
+	c, _ := NewOCIClient(fr.base("go-zpkg/artifacts"))
 	tarball := makeGzTarball("provenanced")
 
 	const builder = "https://github.com/go-zpkg/zbk@v0.64.0"
@@ -683,12 +683,12 @@ func TestProvenanceNamesWhatBuiltTheBottle(t *testing.T) {
 		t.Errorf("signers = %v ok=%v", rep.Signers, rep.OK())
 	}
 
-	// A bottle with no provenance says "" — NOT RECORDED, which a caller
+	// An artifact with no provenance says "" — NOT RECORDED, which a caller
 	// must not render as "built by nobody".
 	plain := makeGzTarball("no-provenance")
 	pushTwoSigned(t, c, "plain.pkg", plain, ours)
 	if _, got, err := c.ProvenanceOfTag("plain.pkg", "1.0.0", "linux", "x86-64"); err != nil || got != "" {
-		t.Errorf("a bottle with no provenance: builder=%q err=%v", got, err)
+		t.Errorf("an artifact with no provenance: builder=%q err=%v", got, err)
 	}
 
 	// An unparseable statement is the same answer, not a refusal: one broken
@@ -730,12 +730,12 @@ func TestBuildsOfCarriesTheSigners(t *testing.T) {
 
 	fr := newFakeRegistry(t, false)
 	defer fr.close()
-	c, _ := NewOCIClient(fr.base("go-zpkg/bottles"))
+	c, _ := NewOCIClient(fr.base("go-zpkg/artifacts"))
 	tarball := makeGzTarball("listed")
 	pushTwoSigned(t, c, "listed.pkg", tarball, ours)
 
 	oldDist := DistBase
-	DistBase = fr.base("go-zpkg/bottles")
+	DistBase = fr.base("go-zpkg/artifacts")
 	resetOCICache()
 	defer func() { DistBase = oldDist; resetOCICache() }()
 
@@ -764,20 +764,20 @@ func TestBuildsOfCarriesTheSigners(t *testing.T) {
 
 // ⛔⛔ THE SECOND BUILDER'S WHOLE WORKFLOW, END TO END. Rebuild, compare the
 // digest against what is published, and — only if they agree — attach a
-// signature to the SAME bytes. Not a second bottle: the point of independent
+// signature to the SAME bytes. Not a second artifact: the point of independent
 // agreement is that there is one artefact and several people's word on it.
-func TestAttachASecondSignatureToAPublishedBottle(t *testing.T) {
+func TestAttachASecondSignatureToAPublishedArtifact(t *testing.T) {
 	ours, alice := mustGenerate(t), mustGenerate(t)
 	pinKey(t, ours)
 
 	fr := newFakeRegistry(t, false)
 	defer fr.close()
-	c, _ := NewOCIClient(fr.base("go-zpkg/bottles"))
+	c, _ := NewOCIClient(fr.base("go-zpkg/artifacts"))
 	tarball := makeGzTarball("rebuilt-identically")
 	pushTwoSigned(t, c, "rebuilt.pkg", tarball, ours)
 
 	// What a rebuilder checks before signing anything.
-	published, err := c.BottleDigest("rebuilt.pkg", "1.0.0", "linux", "x86-64")
+	published, err := c.ArtifactDigest("rebuilt.pkg", "1.0.0", "linux", "x86-64")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -802,7 +802,7 @@ func TestAttachASecondSignatureToAPublishedBottle(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	// The bottle now meets a threshold of two that it did not meet before.
+	// The artifact now meets a threshold of two that it did not meet before.
 	newTrustEnv(t, map[string]string{
 		ExtraTrustedKeysEnv: "alice:" + alice.PublicKeyString(),
 		TrustThresholdEnv:   "2",
@@ -814,7 +814,7 @@ func TestAttachASecondSignatureToAPublishedBottle(t *testing.T) {
 	if !rep.OK() || strings.Join(rep.Signers, ",") != "alice,"+DefaultSignerName {
 		t.Errorf("after attaching: signers=%v ok=%v", rep.Signers, rep.OK())
 	}
-	if err := c.VerifyBottle("rebuilt.pkg", "1.0.0", "linux", "x86-64", tarball); err != nil {
+	if err := c.VerifyArtifact("rebuilt.pkg", "1.0.0", "linux", "x86-64", tarball); err != nil {
 		t.Errorf("install-time verification: %v", err)
 	}
 }
@@ -828,7 +828,7 @@ func TestSignersOfTagWithoutTheTarball(t *testing.T) {
 
 	fr := newFakeRegistry(t, false)
 	defer fr.close()
-	c, _ := NewOCIClient(fr.base("go-zpkg/bottles"))
+	c, _ := NewOCIClient(fr.base("go-zpkg/artifacts"))
 	tarball := makeGzTarball("by-tag")
 	pushTwoSigned(t, c, "by.tag", tarball, ours)
 

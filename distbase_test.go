@@ -1,4 +1,4 @@
-package bottle
+package artifact
 
 import (
 	"encoding/json"
@@ -8,12 +8,12 @@ import (
 	"time"
 )
 
-// ⛔⛔ THE DEFAULT REGISTRY MUST HOLD BOTTLES, AND NOTHING CHECKED THAT.
+// ⛔⛔ THE DEFAULT REGISTRY MUST HOLD ARTIFACTS, AND NOTHING CHECKED THAT.
 //
 // The go-pkgx → go-zpkg rename rewrote DistBase from `ghcr.io/go-pkgx/packages`
 // to `ghcr.io/go-zpkg/packages`, and v0.64.0 through v0.68.0 shipped it.
 // GitHub's container packages are org-scoped and do NOT follow a repository
-// transfer: every repository moved, every bottle stayed. So the whole fleet
+// transfer: every repository moved, every artifact stayed. So the whole fleet
 // pointed at an empty registry, `zpkgx` could fetch nothing with its defaults,
 // and the only thing that noticed was a container check in another repository
 // whose message I first read as a path problem.
@@ -30,7 +30,7 @@ import (
 //
 // (unread answer ≠ negative answer — the lesson this repository has learnt
 // more than once.)
-func TestTheDefaultRegistryHoldsBottles(t *testing.T) {
+func TestTheDefaultRegistryHoldsArtifacts(t *testing.T) {
 	const probe = "gnu.org/bash" // in every build of the catalogue since the first
 
 	reg, repo, ok := strings.Cut(strings.TrimPrefix(DistBase, "oci://"), "/")

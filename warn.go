@@ -1,4 +1,4 @@
-package bottle
+package artifact
 
 import "fmt"
 
@@ -7,7 +7,7 @@ import "fmt"
 // by default — a library must not write to a process's stderr uninvited — so a
 // command-line tool sets it once at startup:
 //
-//	bottle.Warn = func(msg string) { fmt.Fprintln(os.Stderr, "pkgx: "+msg) }
+//	artifact.Warn = func(msg string) { fmt.Fprintln(os.Stderr, "pkgx: "+msg) }
 //
 // Silence here is expensive: an unprovided soname does not fail the install, it
 // fails LATER, when the binary starts and reports "cannot open shared object

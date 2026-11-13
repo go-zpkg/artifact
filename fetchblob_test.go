@@ -2,7 +2,7 @@
 // browser build holds a blob in memory and lets fetch own the transfer.
 //go:build !js
 
-package bottle
+package artifact
 
 import (
 	"context"
@@ -65,13 +65,13 @@ func (b *blobServer) handler() http.HandlerFunc {
 
 func blobClient(t *testing.T, srv *httptest.Server) (*OCIClient, ocispec.Descriptor, []byte) {
 	t.Helper()
-	payload := []byte(strings.Repeat("bottle-bytes ", 4096))
+	payload := []byte(strings.Repeat("artifact-bytes ", 4096))
 	sum := sha256.Sum256(payload)
 	desc := ocispec.Descriptor{
 		Digest: digest.Digest("sha256:" + hex.EncodeToString(sum[:])),
 		Size:   int64(len(payload)),
 	}
-	c, err := NewOCIClient("oci://" + strings.TrimPrefix(srv.URL, "http://") + "/go-zpkg/bottles")
+	c, err := NewOCIClient("oci://" + strings.TrimPrefix(srv.URL, "http://") + "/go-zpkg/artifacts")
 	if err != nil {
 		t.Fatal(err)
 	}

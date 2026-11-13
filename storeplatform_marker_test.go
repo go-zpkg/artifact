@@ -1,4 +1,4 @@
-package bottle
+package artifact
 
 import (
 	"os"
@@ -84,7 +84,7 @@ func TestAnUnwritableStoreIsNotAnError(t *testing.T) {
 // MarkStorePlatform is called from InstallFor, and a marker that is written
 // only by the tests is a feature nobody has. Driven through the early return
 // for a prefix that is already present, so no network is needed: the point is
-// that the store learns its platform on the way past, not that a bottle
+// that the store learns its platform on the way past, not that an artifact
 // arrives.
 func TestInstallForTellsTheStoreItsPlatform(t *testing.T) {
 	store := t.TempDir()

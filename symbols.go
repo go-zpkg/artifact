@@ -1,15 +1,15 @@
-package bottle
+package artifact
 
-// Shared string symbols for the pkgx bottle ecosystem — named once here so
-// bottle, bk and pkgm reference constants instead of scattering magic literals.
-// (The OCI media types live near their use in oci.go as MediaBottleLayer*, and
+// Shared string symbols for the pkgx artifact ecosystem — named once here so
+// artifact, bk and pkgm reference constants instead of scattering magic literals.
+// (The OCI media types live near their use in oci.go as MediaLayer*, and
 // the manifest annotation keys in verify.go as *Annotation; those are already
 // named constants — this file gathers the remaining recurring literals.)
 const (
-	// The bottle tarball extensions; ext also selects the OCI layer media type
+	// The artifact tarball extensions; ext also selects the OCI layer media type
 	// on push.
 	//
-	// Measured on real bottle payloads (25 MiB coreutils, 68 MiB llvm/lib/clang),
+	// Measured on real artifact payloads (25 MiB coreutils, 68 MiB llvm/lib/clang),
 	// same machine, pure-Go codecs:
 	//
 	//	codec       ratio        compress   decompress
@@ -25,7 +25,7 @@ const (
 	ExtTarZst = ".tar.zst"
 
 	// GlibcProject is the pkgx project that provides the C library + loader; it
-	// is the implicit from-scratch root on linux and the bottle whose manifest
+	// is the implicit from-scratch root on linux and the artifact whose manifest
 	// carries the glibc min-kernel annotation.
 	GlibcProject = "gnu.org/glibc"
 )

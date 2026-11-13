@@ -1,4 +1,4 @@
-package bottle
+package artifact
 
 import "testing"
 
@@ -74,7 +74,7 @@ func TestAVersionListSaysWhichRegistryItCameFrom(t *testing.T) {
 		t.Fatal(err)
 	}
 	if elsewhere {
-		t.Error("a platform nothing was published for reports a bottle")
+		t.Error("a platform nothing was published for reports an artifact")
 	}
 }
 

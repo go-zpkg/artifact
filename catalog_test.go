@@ -1,4 +1,4 @@
-package bottle
+package artifact
 
 import (
 	"archive/tar"
@@ -156,7 +156,7 @@ func TestLookup(t *testing.T) {
 	}
 }
 
-// Deterministic bytes, because the artefact is signed like a bottle and a
+// Deterministic bytes, because the artefact is signed like an artifact and a
 // catalogue whose bytes moved for no reason makes every rebuild look like a
 // change.
 func TestMarshalIsDeterministicAndSorted(t *testing.T) {
@@ -310,7 +310,7 @@ func TestCatalogFromTarballRefusals(t *testing.T) {
 	}
 }
 
-// A catalogue is a list of names. Anything bottle-sized in that slot is not
+// A catalogue is a list of names. Anything artifact-sized in that slot is not
 // one, and reading it because the tar said to is how a reader becomes the
 // attack.
 func TestCatalogRefusesAnOversizedFile(t *testing.T) {
@@ -333,13 +333,13 @@ func TestCatalogRefusesAnOversizedFile(t *testing.T) {
 //
 // Per PLATFORM, and the second half of this test is why: what is available
 // differs by architecture, so a catalogue pushed for one must not answer for
-// another. The s390x lane having a fraction of linux/x86-64's bottles is the
+// another. The s390x lane having a fraction of linux/x86-64's artifacts is the
 // case this protects.
 func TestPublishAndFetchACatalogue(t *testing.T) {
 	t.Setenv("ZPKG_VERIFY", "0") // transport round-trip on an unsigned artefact
 	fr := newFakeRegistry(t, false)
 	defer fr.close()
-	c, err := NewOCIClient(fr.base("go-zpkg/bottles"))
+	c, err := NewOCIClient(fr.base("go-zpkg/artifacts"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -457,7 +457,7 @@ func TestDepTreeOfALeafAndOfNothing(t *testing.T) {
 	}
 }
 
-// A CYCLE must terminate. Recipes have them — the closure walk in bottle
+// A CYCLE must terminate. Recipes have them — the closure walk in artifact
 // marks a project seen before descending for exactly this reason — and a
 // browser that recursed would hang on the first one.
 func TestDepTreeTerminatesOnACycle(t *testing.T) {

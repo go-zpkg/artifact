@@ -1,4 +1,4 @@
-package bottle
+package artifact
 
 import (
 	"slices"
@@ -17,14 +17,14 @@ import (
 //
 //	3.3.11_1, 3.3.11, 3.3.11.0
 //
-// and `3.3.11` is the bottle WITHOUT the rebuild — a different build of the
+// and `3.3.11` is the artifact WITHOUT the rebuild — a different build of the
 // same sources, which is the whole reason the counter exists. PublishedTagFor
 // walks these and asks the registry about each, so a lock pinning the rebuilt
-// bottle would have been told "published" on finding the un-rebuilt one, and
+// artifact would have been told "published" on finding the un-rebuilt one, and
 // `bk catalog` would have advertised a rebuild that does not exist.
 //
 // That is the same defect rebuild_test.go was written about — "a lock pinning
-// the REBUILT bottle would therefore have installed the un-rebuilt one, the
+// the REBUILT artifact would therefore have installed the un-rebuilt one, the
 // vulnerable one, and said nothing" — arriving by a second route after the
 // comparator was fixed against the first.
 func TestARebuildHasNoShorterSpelling(t *testing.T) {

@@ -1,4 +1,4 @@
-package bottle
+package artifact
 
 import (
 	"context"
@@ -31,7 +31,7 @@ func TestEnsureIndexedRepairsALateClobber(t *testing.T) {
 	t.Setenv("ZPKG_VERIFY", "0")
 	fr := newFakeRegistry(t, false)
 	defer fr.close()
-	c, err := NewOCIClient(fr.base("go-zpkg/bottles"))
+	c, err := NewOCIClient(fr.base("go-zpkg/artifacts"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -62,13 +62,13 @@ func TestEnsureIndexedRepairsALateClobber(t *testing.T) {
 	}
 }
 
-// TestEnsureIndexedIsANoOpWhenIntact: the pass runs over every bottle a batch
+// TestEnsureIndexedIsANoOpWhenIntact: the pass runs over every artifact a batch
 // published, so the common case must cost one read and change nothing.
 func TestEnsureIndexedIsANoOpWhenIntact(t *testing.T) {
 	t.Setenv("ZPKG_VERIFY", "0")
 	fr := newFakeRegistry(t, false)
 	defer fr.close()
-	c, err := NewOCIClient(fr.base("go-zpkg/bottles"))
+	c, err := NewOCIClient(fr.base("go-zpkg/artifacts"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -93,7 +93,7 @@ func TestEnsureIndexedPreservesAnotherPlatform(t *testing.T) {
 	t.Setenv("ZPKG_VERIFY", "0")
 	fr := newFakeRegistry(t, false)
 	defer fr.close()
-	c, err := NewOCIClient(fr.base("go-zpkg/bottles"))
+	c, err := NewOCIClient(fr.base("go-zpkg/artifacts"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -145,7 +145,7 @@ func TestEnsureIndexedSurfacesAFailedRepair(t *testing.T) {
 	t.Setenv("ZPKG_VERIFY", "0")
 	fr := newFakeRegistry(t, false)
 	defer fr.close()
-	c, err := NewOCIClient(fr.base("go-zpkg/bottles"))
+	c, err := NewOCIClient(fr.base("go-zpkg/artifacts"))
 	if err != nil {
 		t.Fatal(err)
 	}

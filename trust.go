@@ -1,4 +1,4 @@
-package bottle
+package artifact
 
 import (
 	"crypto/ed25519"
@@ -20,24 +20,24 @@ import (
 // The question this answers is "how do I tell a build made by two different
 // people apart?", and the first half of the answer is that you do not, and
 // must not want to. A build's identity is a function of its inputs; if my
-// name went into it, my rebuild of your bottle would get a different address
+// name went into it, my rebuild of your artifact would get a different address
 // and could never be compared with yours. Identity has to collide for two
 // independent builds of the same inputs — that collision IS the evidence.
 //
 // What differs between two builders is therefore not the artefact but the
-// ATTESTATION: who put their key on it. So the registry holds one bottle and,
+// ATTESTATION: who put their key on it. So the registry holds one artifact and,
 // potentially, several signatures over it, and the client counts them.
 //
 // # ⛔ WHICH IS WHY ONE PINNED KEY WAS NOT ENOUGH
 //
-// Until now bottle carried a single SigningPublicKey and oci.go verified the
+// Until now artifact carried a single SigningPublicKey and oci.go verified the
 // FIRST signature referrer it found. With one signer that is correct and with
 // two it is not merely incomplete, it is wrong twice over:
 //
 //   - it cannot count — "signed by both builders" and "signed by one" are the
 //     same answer;
 //   - it is order-dependent — if the registry lists the other builder's
-//     signature first, verification FAILS on a bottle that our own key signed,
+//     signature first, verification FAILS on an artifact that our own key signed,
 //     and the message reads as tampering.
 //
 // # THE MODEL, AND WHERE IT COMES FROM
@@ -75,9 +75,9 @@ const DefaultSignerName = "go-zpkg"
 //
 // ⛔ AND THAT IS A DELIBERATE CHOICE, NOT A PLACEHOLDER. The mechanism is
 // worth having before a second builder exists, because it has to be in place
-// BEFORE the registry is rebuilt — a bottle signed under the old scheme would
+// BEFORE the registry is rebuilt — an artifact signed under the old scheme would
 // have to be republished to gain a second signature. But shipping a default
-// of 2 today would make every published bottle unverifiable by its own client
+// of 2 today would make every published artifact unverifiable by its own client
 // the moment this is released, which is not a security improvement, it is an
 // outage. Two is one environment variable away, and it becomes the right
 // default the day a second builder publishes.
@@ -159,7 +159,7 @@ func (s Signer) verifies(digest string, a Attestation) bool {
 func ParseSigner(entry string) (Signer, error) {
 	entry = strings.TrimSpace(entry)
 	if entry == "" {
-		return Signer{}, errors.New("bottle: empty trusted-key entry")
+		return Signer{}, errors.New("artifact: empty trusted-key entry")
 	}
 	name, key := "", entry
 	// A minisign public key is base64 of 42 bytes — no colon in its
@@ -172,7 +172,7 @@ func ParseSigner(entry string) (Signer, error) {
 	}
 	id, pub, err := sign.ParsePublicKey(key)
 	if err != nil {
-		return Signer{}, fmt.Errorf("bottle: bad trusted key %q: %w", entry, err)
+		return Signer{}, fmt.Errorf("artifact: bad trusted key %q: %w", entry, err)
 	}
 	s := Signer{Name: name, Key: key, id: id, pub: pub}
 	if s.Name == "" {
@@ -204,17 +204,17 @@ func validSignerName(name string) error {
 		return nil // an unnamed key is named by its key id
 	}
 	if len([]rune(name)) > MaxSignerNameLen {
-		return fmt.Errorf("bottle: trusted-key name is longer than %d characters", MaxSignerNameLen)
+		return fmt.Errorf("artifact: trusted-key name is longer than %d characters", MaxSignerNameLen)
 	}
 	for _, r := range name {
 		switch {
 		case r == 0x7f, unicode.IsControl(r):
-			return fmt.Errorf("bottle: trusted-key name %q contains a control character", name)
+			return fmt.Errorf("artifact: trusted-key name %q contains a control character", name)
 		case r == '​', r == ' ', r == ' ':
 			// Zero-width space and the Unicode line separators: not
 			// control characters by category, and all three can hide or
 			// break a line.
-			return fmt.Errorf("bottle: trusted-key name %q contains an invisible character", name)
+			return fmt.Errorf("artifact: trusted-key name %q contains an invisible character", name)
 		}
 	}
 	return nil
@@ -224,7 +224,7 @@ func validSignerName(name string) error {
 func ParseSigners(list string) ([]Signer, error) {
 	fields := strings.Fields(list)
 	if len(fields) > MaxTrustedKeys {
-		return nil, fmt.Errorf("bottle: %d trusted keys, more than the %d allowed", len(fields), MaxTrustedKeys)
+		return nil, fmt.Errorf("artifact: %d trusted keys, more than the %d allowed", len(fields), MaxTrustedKeys)
 	}
 	out := make([]Signer, 0, len(fields))
 	for _, f := range fields {
@@ -266,16 +266,16 @@ func (t TrustSet) revokedBy(digest string, a Attestation) (RevokedKey, bool) {
 //
 // ⛔⛔ THE RETIRED ONES ARE IN IT, AND THAT IS WHAT MAKES ROTATION POSSIBLE AT
 // ALL. Rotating is how you answer a lost or compromised key; if rotating also
-// invalidated every bottle the old key signed, the registry would go dark the
+// invalidated every artifact the old key signed, the registry would go dark the
 // day it was most needed and nobody would ever rotate. A signature is a
 // statement about bytes; changing the key we sign WITH says nothing about
 // what is already signed.
 //
 // ⛔ THEY ARE NOT RANKED AND NOT DATED. Verify counts DISTINCT keys, so a
-// bottle signed by the current key and an old one counts as two — which is
+// artifact signed by the current key and an old one counts as two — which is
 // exactly right during an overlap, where the same publisher deliberately
 // signs with both. A scheme that discounted retired keys would make an
-// overlap bottle look like one signer, and a threshold of two unmeetable
+// overlap artifact look like one signer, and a threshold of two unmeetable
 // precisely while rotating.
 //
 // It reads the variables at call time rather than at init, because
@@ -334,7 +334,7 @@ func withoutRevoked(in []Signer, revoked []RevokedKey) []Signer {
 //
 // ⛔ A THRESHOLD NOBODY COULD MEET IS REFUSED HERE, NOT AT INSTALL TIME. Three
 // signatures required of a one-key trust set is a configuration that fails
-// every install with a message about the bottle. Said at load time it is a
+// every install with a message about the artifact. Said at load time it is a
 // message about the configuration, which is where the mistake is.
 func LoadTrustSet() (TrustSet, error) {
 	t := DefaultTrustSet()
@@ -393,7 +393,7 @@ func (t TrustSet) Names() []string {
 	return out
 }
 
-// Attestation is one candidate signature found on a bottle: the simple-signing
+// Attestation is one candidate signature found on an artifact: the simple-signing
 // payload, the base64 signature over it, and — when the publisher recorded one
 // — the key id that is claimed to have made it.
 type Attestation struct {
@@ -424,8 +424,8 @@ type Attestation struct {
 // bounded by MaxSignatures × MaxTrustedKeys.
 //
 // Its errors — an unusable trust set, or more signatures than it will look at
-// — name the finding and NOT the bottle, because only the caller knows which
-// bottle was being checked.
+// — name the finding and NOT the artifact, because only the caller knows which
+// artifact was being checked.
 func (t TrustSet) Count(digest string, atts []Attestation) (names []string, untrusted int, err error) {
 	n, u, _, err := t.count(digest, atts)
 	return n, u, err
@@ -470,29 +470,29 @@ func (t TrustSet) count(digest string, atts []Attestation) (names []string, untr
 	return names, untrusted, revoked, nil
 }
 
-// SignatureReport is what a registry had to say about who signed one bottle:
+// SignatureReport is what a registry had to say about who signed one artifact:
 // the trusted keys that did, and everything that did not count, kept apart so
 // a caller can tell "nobody signed this" from "we could not read what was
 // attached".
 type SignatureReport struct {
-	// Signers are the distinct trusted keys that vouch for this bottle.
+	// Signers are the distinct trusted keys that vouch for this artifact.
 	Signers []string
 	// Untrusted counts signatures made by keys outside the trust set.
 	//
 	// ⛔ THEY ARE NOT AN ERROR. Anybody may attach a signature to a public
-	// artefact; if a stranger's signature invalidated a bottle, invalidating
-	// any bottle would cost one push.
+	// artefact; if a stranger's signature invalidated an artifact, invalidating
+	// any artifact would cost one push.
 	Untrusted int
 	// Malformed counts signature referrers that could not be read at all.
 	// Counted rather than skipped: "unsigned" and "signed, but the referrer
 	// is broken" are different facts, and the second names a publishing bug.
 	Malformed int
-	// Revoked are OUR OWN keys, found on this bottle, that are no longer
+	// Revoked are OUR OWN keys, found on this artifact, that are no longer
 	// believed.
 	//
 	// ⛔⛔ THIS IS NOT "Untrusted WITH A NAME". A stranger's signature is
 	// noise anybody can make and is correctly ignored. Our own revoked key
-	// on a bottle means either that we published it before the key was
+	// on an artifact means either that we published it before the key was
 	// compromised — and cannot prove which — or that whoever took the key
 	// published it. A reader has to act on that, and they can only act on
 	// it if the verdict says it in those words.
@@ -527,12 +527,12 @@ func (r SignatureReport) Err() error {
 	return shortOfThreshold(r.Signers, r.Untrusted, r.Malformed, r.want(), r.Revoked)
 }
 
-// RevokedNote is the line a command prints when a bottle carries one of our
+// RevokedNote is the line a command prints when an artifact carries one of our
 // own revoked keys, or "" when it does not.
 //
-// ⛔ IT IS SEPARATE FROM THE VERDICT ON PURPOSE. A bottle can meet the
+// ⛔ IT IS SEPARATE FROM THE VERDICT ON PURPOSE. An artifact can meet the
 // threshold on its current signature AND still carry a revoked one — that is
-// what a re-signed bottle looks like before the old referrer is removed, and
+// what a re-signed artifact looks like before the old referrer is removed, and
 // what a planted signature looks like too. The verdict says whether to
 // install; this says what else is on the artefact.
 func (r SignatureReport) RevokedNote() string {
@@ -540,7 +540,7 @@ func (r SignatureReport) RevokedNote() string {
 		return ""
 	}
 	var b strings.Builder
-	b.WriteString("⚠ this bottle carries a signature from a key we REVOKED:")
+	b.WriteString("⚠ this artifact carries a signature from a key we REVOKED:")
 	for _, k := range r.Revoked {
 		b.WriteString("\n  " + k.Name)
 		if k.Because != "" {
@@ -548,7 +548,7 @@ func (r SignatureReport) RevokedNote() string {
 		}
 	}
 	b.WriteString("\n  It signs for nothing. Whether this artefact predates the compromise " +
-		"cannot be told from it:\n  every bottle carries the same pinned timestamp.")
+		"cannot be told from it:\n  every artifact carries the same pinned timestamp.")
 	return b.String()
 }
 

@@ -1,4 +1,4 @@
-package bottle
+package artifact
 
 import (
 	"bytes"
@@ -58,7 +58,7 @@ func SonameComesFromOutside(soname string) bool {
 //
 // It is the first of the three things Nix requires of a bootstrapped
 // toolchain: the final environment must not REFERENCE the seed it came from.
-// A bottle whose PT_INTERP is /lib64/ld-linux-x86-64.so.2 runs because the
+// An artifact whose PT_INTERP is /lib64/ld-linux-x86-64.so.2 runs because the
 // MACHINE has that file, and says nothing about whether the store does. Our
 // own builder README states the same property in prose and measured it once,
 // by hand, on one recipe:

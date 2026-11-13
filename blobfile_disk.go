@@ -1,6 +1,6 @@
 //go:build !js
 
-package bottle
+package artifact
 
 import (
 	"context"
@@ -19,12 +19,12 @@ import (
 // the digest proves they belong together. The returned file is positioned at
 // the start.
 //
-// A bottle is not a small object: llvm.org is ~1.7 GiB compressed. Assembling
+// An artifact is not a small object: llvm.org is ~1.7 GiB compressed. Assembling
 // one in a []byte made the largest package in the catalogue the memory FLOOR of
 // every consumer — and the old append-from-ReadAll held two copies at the peak,
 // so ~3.4 GiB of anonymous memory to install a compiler. That is what killed a
 // 2 GiB micro-VM: `Out of memory: Killed process (pkgx) total-vm:3329636kB`.
-// Streaming to disk makes the floor the bottle's SIZE ON DISK, which the install
+// Streaming to disk makes the floor the artifact's SIZE ON DISK, which the install
 // needs anyway.
 // blobStagingDir is where a blob is assembled: inside the STORE, not in the
 // system temp directory.
@@ -35,7 +35,7 @@ import (
 // only file is the binary. Caught by building that image and running it:
 //
 //	pkgx: catalog update: blob sha256:6fc3caf…: temp file:
-//	      open /tmp/bottle-blob-1245446855: no such file or directory
+//	      open /tmp/artifact-blob-1245446855: no such file or directory
 //
 // The store is the one directory that must exist for any of this to mean
 // anything, so it is the honest place to stage. Two things come free: the
@@ -57,7 +57,7 @@ func blobStagingDir() string {
 
 func (c *OCIClient) fetchBlobFile(ctx context.Context, project string, desc ocispec.Descriptor) (*BlobFile, error) {
 	url := c.scheme() + "://" + c.host + "/v2/" + c.repoName(project) + "/blobs/" + desc.Digest.String()
-	f, err := osCreateTemp(blobStagingDir(), "bottle-blob-*")
+	f, err := osCreateTemp(blobStagingDir(), "artifact-blob-*")
 	if err != nil {
 		return nil, fmt.Errorf("blob %s: temp file: %w", desc.Digest, err)
 	}

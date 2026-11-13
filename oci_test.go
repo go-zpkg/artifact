@@ -1,4 +1,4 @@
-package bottle
+package artifact
 
 import (
 	"bytes"
@@ -274,10 +274,10 @@ func resetOCICache() {
 }
 
 func TestOCIRoundTripPushPull(t *testing.T) {
-	t.Setenv("ZPKG_VERIFY", "0") // transport round-trip on unsigned bottles
+	t.Setenv("ZPKG_VERIFY", "0") // transport round-trip on unsigned artifacts
 	fr := newFakeRegistry(t, false)
 	defer fr.close()
-	base := fr.base("go-zpkg/bottles")
+	base := fr.base("go-zpkg/artifacts")
 
 	c, err := NewOCIClient(base)
 	if err != nil {
@@ -301,32 +301,32 @@ func TestOCIRoundTripPushPull(t *testing.T) {
 	if err != nil || len(vs) != 1 || vs[0].Raw != "1.2.3" {
 		t.Fatalf("VersionsFor = %v err=%v", vs, err)
 	}
-	got, ext, err := DownloadBottle("hello.test", "1.2.3", "linux", "x86-64")
+	got, ext, err := DownloadArtifact("hello.test", "1.2.3", "linux", "x86-64")
 	if err != nil || ext != ".tar.gz" {
-		t.Fatalf("DownloadBottle linux ext=%q err=%v", ext, err)
+		t.Fatalf("DownloadArtifact linux ext=%q err=%v", ext, err)
 	}
 	if !bytes.Equal(got, gzData) {
 		t.Errorf("linux bytes mismatch: got %d bytes", len(got))
 	}
 	// the other platform selects the xz layer + exact bytes.
-	got2, ext2, err := DownloadBottle("hello.test", "1.2.3", "darwin", "aarch64")
+	got2, ext2, err := DownloadArtifact("hello.test", "1.2.3", "darwin", "aarch64")
 	if err != nil || ext2 != ".tar.xz" {
-		t.Fatalf("DownloadBottle darwin ext=%q err=%v", ext2, err)
+		t.Fatalf("DownloadArtifact darwin ext=%q err=%v", ext2, err)
 	}
 	if !bytes.Equal(got2, xzMarker) {
 		t.Errorf("darwin bytes mismatch")
 	}
 	// a platform not pushed → error (platform not in index).
-	if _, _, err := DownloadBottle("hello.test", "1.2.3", "windows", "x86-64"); err == nil {
+	if _, _, err := DownloadArtifact("hello.test", "1.2.3", "windows", "x86-64"); err == nil {
 		t.Error("expected error for a platform absent from the index")
 	}
 }
 
 func TestOCIAuthChallengeFlow(t *testing.T) {
-	t.Setenv("ZPKG_VERIFY", "0")   // transport/auth test on unsigned bottles
+	t.Setenv("ZPKG_VERIFY", "0")   // transport/auth test on unsigned artifacts
 	fr := newFakeRegistry(t, true) // require bearer token
 	defer fr.close()
-	base := fr.base("go-zpkg/bottles")
+	base := fr.base("go-zpkg/artifacts")
 	c, err := NewOCIClient(base)
 	if err != nil {
 		t.Fatal(err)
@@ -345,7 +345,7 @@ func TestOCIAuthChallengeFlow(t *testing.T) {
 	DistBase = base
 	defer func() { DistBase = old; resetOCICache() }()
 	resetOCICache()
-	got, _, err := DownloadBottle("secure.test", "0.1.0", "linux", "x86-64")
+	got, _, err := DownloadArtifact("secure.test", "0.1.0", "linux", "x86-64")
 	if err != nil {
 		t.Fatalf("authed pull: %v", err)
 	}
@@ -399,12 +399,12 @@ func TestVersionsForOCIErrorPropagates(t *testing.T) {
 func TestOCIRepushIsIdempotent(t *testing.T) {
 	fr := newFakeRegistry(t, false)
 	defer fr.close()
-	c, _ := NewOCIClient(fr.base("go-zpkg/bottles"))
+	c, _ := NewOCIClient(fr.base("go-zpkg/artifacts"))
 	data := makeGzTarball("idem")
 	if err := c.Push("idem.test", "1.0.0", "linux", "x86-64", data, ".tar.gz"); err != nil {
 		t.Fatal(err)
 	}
-	// second push of the same bottle must not error (Exists short-circuit).
+	// second push of the same artifact must not error (Exists short-circuit).
 	if err := c.Push("idem.test", "1.0.0", "linux", "x86-64", data, ".tar.gz"); err != nil {
 		t.Fatalf("re-push: %v", err)
 	}
@@ -415,7 +415,7 @@ func TestNewOCIClientParsing(t *testing.T) {
 		base, host, repo string
 		plain            bool
 	}{
-		{"oci://ghcr.io/go-zpkg/bottles", "ghcr.io", "go-zpkg/bottles", false},
+		{"oci://ghcr.io/go-zpkg/artifacts", "ghcr.io", "go-zpkg/artifacts", false},
 		{"oci://localhost:5000/x/y", "localhost:5000", "x/y", true},
 		{"oci://127.0.0.1:8080/b", "127.0.0.1:8080", "b", true},
 		{"oci://http://reg.internal/b", "reg.internal", "b", true},
@@ -431,8 +431,8 @@ func TestNewOCIClientParsing(t *testing.T) {
 			t.Errorf("%s -> host=%q repo=%q plain=%v", tc.base, c.host, c.repoBase, c.plainHTTP)
 		}
 	}
-	c, _ := newOCIClientEnv("oci://ghcr.io/go-zpkg/bottles", func(string) string { return "" })
-	if got := c.repoName("OpenSSL.org"); got != "go-zpkg/bottles/openssl.org" {
+	c, _ := newOCIClientEnv("oci://ghcr.io/go-zpkg/artifacts", func(string) string { return "" })
+	if got := c.repoName("OpenSSL.org"); got != "go-zpkg/artifacts/openssl.org" {
 		t.Errorf("repoName() = %q", got)
 	}
 	if _, err := NewOCIClient("https://not-oci"); err == nil {
@@ -471,8 +471,8 @@ func TestOCIArchMapping(t *testing.T) {
 
 func TestExtForLayerVariants(t *testing.T) {
 	cases := map[string]string{
-		MediaBottleLayerGz:             ".tar.gz",
-		MediaBottleLayerXz:             ".tar.xz",
+		MediaLayerGz:                   ".tar.gz",
+		MediaLayerXz:                   ".tar.xz",
 		"application/x-foo.tar+gzip":   ".tar.gz",
 		"application/x-foo.tar+xz":     ".tar.xz",
 		"application/gzip":             ".tar.gz",
@@ -512,11 +512,11 @@ func TestIsIndexMediaSniff(t *testing.T) {
 func TestOCIPushReferrers(t *testing.T) {
 	fr := newFakeRegistry(t, false)
 	defer fr.close()
-	c, err := NewOCIClient(fr.base("go-zpkg/bottles"))
+	c, err := NewOCIClient(fr.base("go-zpkg/artifacts"))
 	if err != nil {
 		t.Fatal(err)
 	}
-	tarball := makeGzTarball("bottle-body")
+	tarball := makeGzTarball("artifact-body")
 	sbom := []byte(`{"bomFormat":"CycloneDX","specVersion":"1.5"}`)
 	prov := []byte(`{"_type":"https://in-toto.io/Statement/v1"}`)
 	manDesc, err := c.PushWithReferrers("ref.test", "1.0.0", "linux", "x86-64", tarball, ".tar.gz",
@@ -542,16 +542,16 @@ func TestOCIPushReferrers(t *testing.T) {
 	if !got["application/vnd.cyclonedx+json"] || !got["application/vnd.in-toto+json"] {
 		t.Errorf("referrer artifact types = %v", got)
 	}
-	// the bottle itself is still pullable
+	// the artifact itself is still pullable
 	if _, _, err := c.Pull("ref.test", "1.0.0", "linux", "x86-64"); err != nil {
-		t.Errorf("bottle not pullable after referrers: %v", err)
+		t.Errorf("artifact not pullable after referrers: %v", err)
 	}
 }
 
 func TestOCIReferrerBlobFailure(t *testing.T) {
 	fr := newFakeRegistry(t, false)
 	defer fr.close()
-	c, _ := NewOCIClient(fr.base("go-zpkg/bottles"))
+	c, _ := NewOCIClient(fr.base("go-zpkg/artifacts"))
 	sbom := []byte(`{"bomFormat":"CycloneDX"}`)
 	sbomDigest := sha256hex(sbom)
 	// fail exactly the referrer blob upload → pushReferrer blob error → push error
@@ -585,7 +585,7 @@ func clobberIndexTo(t *testing.T, c *OCIClient, project, ver string) {
 func TestOCIIndexReconcilesConcurrentClobber(t *testing.T) {
 	fr := newFakeRegistry(t, false)
 	defer fr.close()
-	c, _ := NewOCIClient(fr.base("go-zpkg/bottles"))
+	c, _ := NewOCIClient(fr.base("go-zpkg/artifacts"))
 
 	oldB, oldH := indexRetryBackoff, afterTagHook
 	indexRetryBackoff = func(int) {}
@@ -623,7 +623,7 @@ func TestOCIIndexReconcilesConcurrentClobber(t *testing.T) {
 func TestOCIIndexReconcileGivesUp(t *testing.T) {
 	fr := newFakeRegistry(t, false)
 	defer fr.close()
-	c, _ := NewOCIClient(fr.base("go-zpkg/bottles"))
+	c, _ := NewOCIClient(fr.base("go-zpkg/artifacts"))
 
 	oldA, oldB, oldH := indexRetryAttempts, indexRetryBackoff, afterTagHook
 	indexRetryAttempts, indexRetryBackoff = 2, func(int) {}
@@ -639,7 +639,7 @@ func TestOCIIndexReconcileGivesUp(t *testing.T) {
 func TestOCIIndexTagFailure(t *testing.T) {
 	fr := newFakeRegistry(t, false)
 	defer fr.close()
-	c, _ := NewOCIClient(fr.base("go-zpkg/bottles"))
+	c, _ := NewOCIClient(fr.base("go-zpkg/artifacts"))
 	// Fail the PUT that tags the version index (manifests/<tag>); per-platform
 	// manifests and blobs are addressed by digest, so only the tag write fails.
 	fr.hook = func(r *http.Request) (int, bool) {
@@ -654,7 +654,7 @@ func TestOCIIndexTagFailure(t *testing.T) {
 func TestOCIIndexMarshalError(t *testing.T) {
 	fr := newFakeRegistry(t, false)
 	defer fr.close()
-	c, _ := NewOCIClient(fr.base("go-zpkg/bottles"))
+	c, _ := NewOCIClient(fr.base("go-zpkg/artifacts"))
 
 	old := marshalIndex
 	marshalIndex = func(ocispec.Index) ([]byte, error) { return nil, fmt.Errorf("boom") }
@@ -667,7 +667,7 @@ func TestOCIIndexMarshalError(t *testing.T) {
 func TestOCIReferrersServerError(t *testing.T) {
 	fr := newFakeRegistry(t, false)
 	defer fr.close()
-	c, _ := NewOCIClient(fr.base("go-zpkg/bottles"))
+	c, _ := NewOCIClient(fr.base("go-zpkg/artifacts"))
 	manDesc, err := c.PushWithReferrers("srv.err", "1", "linux", "x86-64", makeGzTarball("y"), ".tar.gz", nil)
 	if err != nil {
 		t.Fatal(err)
@@ -684,7 +684,7 @@ func TestOCIReferrersServerError(t *testing.T) {
 func TestOCIReferrersErrors(t *testing.T) {
 	fr := newFakeRegistry(t, false)
 	defer fr.close()
-	c, _ := NewOCIClient(fr.base("go-zpkg/bottles"))
+	c, _ := NewOCIClient(fr.base("go-zpkg/artifacts"))
 	// a bad project name makes repository() (remote.NewRepository) fail for both
 	// pushReferrer's caller and Referrers.
 	bad := "BAD..name/../x"
@@ -721,7 +721,7 @@ func TestUpsertPlatform(t *testing.T) {
 func TestOCIPushAnnotated(t *testing.T) {
 	fr := newFakeRegistry(t, false)
 	defer fr.close()
-	c, err := NewOCIClient(fr.base("go-zpkg/bottles"))
+	c, err := NewOCIClient(fr.base("go-zpkg/artifacts"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -763,7 +763,7 @@ func TestOCIPushAnnotated(t *testing.T) {
 // TestOCIHasPlatform: the pure-Go published-check (skip logic for the factory).
 func TestOCIHasPlatform(t *testing.T) {
 	fr := newFakeRegistry(t, false)
-	c, err := NewOCIClient(fr.base("go-zpkg/bottles"))
+	c, err := NewOCIClient(fr.base("go-zpkg/artifacts"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -797,7 +797,7 @@ func TestOCIHasPlatform(t *testing.T) {
 // miniature: the racer's write lands AFTER our verify, not before it.
 //
 // python.org 3.14.7 was mirrored by the two arch jobs 350 ms apart and the
-// published index listed only amd64 — the arm64 bottle was pushed, its manifest
+// published index listed only amd64 — the arm64 artifact was pushed, its manifest
 // was fine, and every arm64 install then failed with "platform not in index".
 // The loop had already confirmed arm64 was present; the clobber came later,
 // from a writer whose read predated it.
@@ -809,7 +809,7 @@ func TestOCIHasPlatform(t *testing.T) {
 func TestOCIIndexSurvivesALateClobber(t *testing.T) {
 	fr := newFakeRegistry(t, false)
 	defer fr.close()
-	c, _ := NewOCIClient(fr.base("go-zpkg/bottles"))
+	c, _ := NewOCIClient(fr.base("go-zpkg/artifacts"))
 
 	oldB, oldS, oldH := indexRetryBackoff, indexSettle, afterTagHook
 	indexRetryBackoff, afterTagHook = func(int) {}, nil

@@ -1,4 +1,4 @@
-package bottle
+package artifact
 
 import (
 	"path/filepath"
@@ -13,7 +13,7 @@ import (
 // a fuzz target rather than a table: a table tests the inputs I thought of,
 // and every hole found here so far was in a field I had not thought of.
 // There were no Fuzz targets anywhere in this family before this file,
-// while bottle parses a catalogue, a lock and a project name — all three
+// while artifact parses a catalogue, a lock and a project name — all three
 // fetched from somewhere else and all three printed.
 //
 // The property is deliberately not "it does not panic". It is that a value
@@ -120,7 +120,7 @@ func FuzzDisplayText(f *testing.F) {
 // ZPKG_TRUSTED_KEYS is read from the environment or from ~/.zpkg/config.hcl2,
 // which is the sort of thing a team ships in a dotfiles repository, a base
 // image or a CI snippet. What a signer is NAMED there is then printed in the
-// one line a user reads to decide whether to trust a bottle:
+// one line a user reads to decide whether to trust an artifact:
 //
 //	signed by: go-zpkg, alice
 //
@@ -174,7 +174,7 @@ func FuzzParseSigners(f *testing.F) {
 //
 // The three targets above all read something fetched as DATA — a catalogue, a
 // lock, a summary. This one reads something fetched as a BINARY: the @rpath
-// references in a downloaded bottle's load commands. They were never
+// references in a downloaded artifact's load commands. They were never
 // validated, and they decide two things that leave the process:
 //
 //   - the path the closure stats to call a reference "already satisfied"

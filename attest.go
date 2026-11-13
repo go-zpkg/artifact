@@ -1,8 +1,8 @@
-package bottle
+package artifact
 
-// attest.go copies a published bottle's attestations between registries.
+// attest.go copies a published artifact's attestations between registries.
 //
-// A mirror that carries the bottle but not its SBOM, provenance and signature
+// A mirror that carries the artifact but not its SBOM, provenance and signature
 // silently downgrades every consumer behind it: verification is fail-closed by
 // default, so the copy is either refused or, worse, run with verification off.
 // A local pull-through cache is only useful if what comes out of it is still
@@ -16,9 +16,9 @@ import (
 	orascontent "oras.land/oras-go/v2/content"
 )
 
-// FetchAttestations returns a published bottle's attestations, ready to be
+// FetchAttestations returns a published artifact's attestations, ready to be
 // pushed to another registry with PushWithReferrersAnnotated, along with the
-// per-platform manifest's annotations (a glibc bottle's minimum kernel, a
+// per-platform manifest's annotations (a glibc artifact's minimum kernel, a
 // flavored build's glibc version) so those survive the copy too.
 func (c *OCIClient) FetchAttestations(project, ver, osn, arch string) ([]Referrer, map[string]string, error) {
 	ctx := context.Background()
@@ -63,7 +63,7 @@ func (c *OCIClient) FetchAttestations(project, ver, osn, arch string) ([]Referre
 // single layer is the payload (an SBOM, a provenance statement, a simple-signing
 // document) and its annotations carry the cosign signature. The signature covers
 // the PAYLOAD, so re-packing these into an equivalent manifest at the
-// destination keeps the bottle verifiable there.
+// destination keeps the artifact verifiable there.
 //
 // It reports ok=false for a referrer with no payload to carry — an empty
 // attestation is skipped rather than invented.

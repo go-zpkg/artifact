@@ -1,4 +1,4 @@
-package bottle
+package artifact
 
 import (
 	"errors"
@@ -56,7 +56,7 @@ func IsNotPublished(err error) bool {
 	return repoAbsent(err)
 }
 
-// NoBottleHereError says the project IS published — just not anything this
+// NoArtifactHereError says the project IS published — just not anything this
 // platform can install.
 //
 // # WHY A SECOND TYPE, AND WHY IT IS THE COMMON ONE
@@ -65,7 +65,7 @@ func IsNotPublished(err error) bool {
 // repository does not exist at all, which is what a brand-new package looks
 // like. The ordinary state is the other one: measured 2026-10-23 against the
 // published darwin/aarch64 catalogue, 567 of 1940 projects had a recipe and
-// no bottle — 29% of the pantry, against which `pkgx <project>` answered
+// no artifact — 29% of the pantry, against which `pkgx <project>` answered
 //
 //	no version of aerc-mail.org is published for darwin/aarch64
 //	(available: 0.22.0; not published here: 0.22.0)
@@ -78,12 +78,12 @@ func IsNotPublished(err error) bool {
 //
 // The fields are the message's own parts, so a caller that wants to say
 // something else does not have to parse the sentence back apart.
-type NoBottleHereError struct {
+type NoArtifactHereError struct {
 	Project     string
 	OS, Arch    string
 	Constraints []string // what was asked for; empty means "any version"
 	Available   []Ver    // every version the pantry knows, oldest first
-	Absent      []string // of those, the ones with no bottle here
+	Absent      []string // of those, the ones with no artifact here
 }
 
 // Error keeps the two sentences the field reports settled on, verbatim.
@@ -92,7 +92,7 @@ type NoBottleHereError struct {
 // 2026-10-12, when `pkgx hugo version` produced "satisfies  AND is published
 // for", two spaces where the reason should be, blaming a constraint that did
 // not exist.
-func (e *NoBottleHereError) Error() string {
+func (e *NoArtifactHereError) Error() string {
 	if len(e.Constraints) == 0 {
 		return fmt.Sprintf("no version of %s is published for %s/%s (available: %s; not published here: %s)",
 			e.Project, e.OS, e.Arch, availableVersions(e.Available), strings.Join(e.Absent, " "))
@@ -112,7 +112,7 @@ func (e *NoBottleHereError) Error() string {
 // them comes to be forgotten, which is exactly what happened to the second
 // state for the length of one release.
 func ProjectToRequest(err error) string {
-	var nb *NoBottleHereError
+	var nb *NoArtifactHereError
 	if errors.As(err, &nb) {
 		return nb.Project
 	}

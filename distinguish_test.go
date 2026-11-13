@@ -1,4 +1,4 @@
-package bottle
+package artifact
 
 import (
 	"strings"
@@ -109,7 +109,7 @@ func TestDistinguishReportsADependencyOnlyOneBuildHas(t *testing.T) {
 }
 
 // ⛔ A SPEC THAT RECORDS NOTHING GETS AN EMPTY LINE, NOT AN INVENTED ONE.
-// Every bottle published before identities existed is one of these, and the
+// Every artifact published before identities existed is one of these, and the
 // caller has to be able to tell "we know nothing" from "we know it is plain".
 func TestDistinguishLeavesAnUnknownBuildUndescribed(t *testing.T) {
 	got := Distinguish([]Concrete{{}, spec("linux/x86-64", "sha256:a")})

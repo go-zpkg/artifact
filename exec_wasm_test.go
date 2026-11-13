@@ -1,6 +1,6 @@
 //go:build js || wasip1
 
-package bottle
+package artifact
 
 import (
 	"strings"

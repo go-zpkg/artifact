@@ -1,4 +1,4 @@
-package bottle
+package artifact
 
 import (
 	"os"
@@ -8,7 +8,7 @@ import (
 
 // ⛔⛔ "ALREADY INSTALLED" MUST MEAN THE REQUESTED PREFIX IS THERE.
 //
-// InstallFor renames the unpacked tree onto `dest`, the directory the BOTTLE
+// InstallFor renames the unpacked tree onto `dest`, the directory the ARTIFACT
 // carries — which is not always the version that was requested. A rebuild is
 // published as `3.3.11_1` and still unpacks to `v3.3.11`.
 //

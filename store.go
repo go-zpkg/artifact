@@ -1,4 +1,4 @@
-package bottle
+package artifact
 
 import (
 	"io/fs"
@@ -8,12 +8,12 @@ import (
 	"strings"
 )
 
-// What the bottle store HOLDS — the one tree nothing in this family could
+// What the artifact store HOLDS — the one tree nothing in this family could
 // show.
 //
 // # WHY IT WAS WORTH WRITING
 //
-// Every ephemeral `pkgx <pkg>` leaves its bottles in
+// Every ephemeral `pkgx <pkg>` leaves its artifacts in
 // $ZPKG_DIR/<project>/v<version>, and nothing ever removes one. `pkgm list`
 // lists INSTALLATIONS, which is a different set: it answers "what did I ask
 // for", not "what is on this disk".
@@ -45,7 +45,7 @@ type StoreEntry struct {
 	Newest bool
 }
 
-// ScanStore reports every version directory under a bottle store.
+// ScanStore reports every version directory under an artifact store.
 //
 // Symlinks are counted NEVER: writeVersionLinks puts `v*`, `v22` and
 // `v22.1` beside `v22.1.8`, all pointing at it, and following them would
@@ -127,7 +127,7 @@ func scanProject(root, project string) ([]StoreEntry, error) {
 
 // treeBytes adds up a directory, counting each file once.
 //
-// Lstat, not Stat: a bottle contains symlinks of its own — every lib/*.so
+// Lstat, not Stat: an artifact contains symlinks of its own — every lib/*.so
 // line, and the `v*` aliases one level up — and following them would count
 // the same bytes repeatedly and could walk out of the store entirely.
 func treeBytes(dir string) (int64, error) {

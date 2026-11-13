@@ -1,6 +1,6 @@
 //go:build !windows && !js && !wasip1
 
-package bottle
+package artifact
 
 import "syscall"
 

@@ -1,4 +1,4 @@
-package bottle
+package artifact
 
 import (
 	"os"
@@ -238,7 +238,7 @@ func TestCompleteClosure(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	// The fake bottles contain no real ELFs, so scanNeeded finds nothing; on
+	// The fake artifacts contain no real ELFs, so scanNeeded finds nothing; on
 	// linux glibc is still added unconditionally, on darwin nothing is.
 	if GOOS() == "linux" {
 		if len(closure) != 2 {
@@ -327,16 +327,16 @@ func TestIsImplicitSoname(t *testing.T) {
 
 // TestHostProvidedSoname: a GPU driver's userspace half is not a hole in the
 // packaging, and must not be reported as one. UCX built --with-cuda links its
-// cuda module against the stub in the cudart bottle; the real libcuda.so.1
+// cuda module against the stub in the cudart artifact; the real libcuda.so.1
 // belongs to whoever installed the driver, and must match the kernel module it
-// talks to, so no bottle can or should provide it.
+// talks to, so no artifact can or should provide it.
 func TestHostProvidedSoname(t *testing.T) {
 	for _, s := range []string{"libcuda.so.1", "libcuda.so", "libnvidia-ml.so.1"} {
 		if !isHostProvidedSoname(s) {
 			t.Errorf("%s should be host-provided", s)
 		}
 	}
-	// Not a licence to swallow anything cuda-shaped: cudart IS a bottle, and a
+	// Not a licence to swallow anything cuda-shaped: cudart IS an artifact, and a
 	// missing one is a real gap that must still be reported.
 	for _, s := range []string{"libcudart.so.13", "libz.so.1", "libhsa-runtime64.so.1"} {
 		if isHostProvidedSoname(s) {
@@ -346,7 +346,7 @@ func TestHostProvidedSoname(t *testing.T) {
 }
 
 // TestImplicitRootsOff: the escape for a bootstrap host, where the machine has
-// a libc and the registry has no bottle of one.
+// a libc and the registry has no artifact of one.
 //
 // The default is the one that matters here, so it is asserted in the same test
 // as the override: a variable that silently defaulted to "off" would turn every
@@ -451,7 +451,7 @@ func TestASonameThreeLevelsDownIsProvided(t *testing.T) {
 }
 
 // And a lib dir that is not there at all must be silence, not a walk error
-// leaking out: a bottle with no lib/ is ordinary.
+// leaking out: an artifact with no lib/ is ordinary.
 func TestAPrefixWithNoLibDir(t *testing.T) {
 	prefix := t.TempDir()
 	if got := availableSonames([]string{prefix}); len(got) != 0 {
@@ -460,7 +460,7 @@ func TestAPrefixWithNoLibDir(t *testing.T) {
 }
 
 // The two entries added from the second sovereign generation, each checked
-// against an installed bottle rather than recalled. gnu.org/bison died on
+// against an installed artifact rather than recalled. gnu.org/bison died on
 // libtextstyle.so.0 AFTER a successful build.
 func TestTheSonamesGen1Named(t *testing.T) {
 	for soname, want := range map[string]string{

@@ -1,4 +1,4 @@
-package bottle
+package artifact
 
 import (
 	"strings"
@@ -22,7 +22,7 @@ func TestTwoVariantsOfOneVersionHaveDifferentHashes(t *testing.T) {
 
 // The same spec hashes alike however its maps and slices were built: a hash
 // that depended on map iteration order would give ONE build two identities,
-// and the registry would hold the same bottle twice under different names.
+// and the registry would hold the same artifact twice under different names.
 func TestTheHashDoesNotDependOnOrder(t *testing.T) {
 	a := Concrete{
 		Platform: "linux/x86-64",
@@ -70,14 +70,14 @@ func TestTheCanonicalFormCannotBeForgedByConcatenation(t *testing.T) {
 
 // ⛔⛔ THE PLATFORM IS IN THE HASH, because reuse across operating systems is
 // otherwise silently wrong: Spack's os_compatible map is DIRECTIONAL, and a
-// identity that omits the platform lets a darwin bottle answer a linux pin.
+// identity that omits the platform lets a darwin artifact answer a linux pin.
 func TestThePlatformIsPartOfTheIdentity(t *testing.T) {
 	lin := Concrete{Platform: "linux/x86-64", Variants: Variants{"cuda": {"true"}}}
 	mac := Concrete{Platform: "darwin/aarch64", Variants: Variants{"cuda": {"true"}}}
 	if lin.Hash() == mac.Hash() {
 		t.Error("two platforms share a hash")
 	}
-	// And the platform alone is enough to be an identity: a bottle we know
+	// And the platform alone is enough to be an identity: an artifact we know
 	// only the platform of is still a different thing per platform.
 	if (Concrete{Platform: "linux/x86-64"}).Hash() == "" {
 		t.Error("a platform-only spec has no hash")
@@ -105,7 +105,7 @@ func TestARecipeEditChangesTheIdentity(t *testing.T) {
 	}
 }
 
-// ⛔⛔ A GRAFTED BOTTLE IS A NEW ITEM, and the ungrafted one stays reachable.
+// ⛔⛔ A GRAFTED ARTIFACT IS A NEW ITEM, and the ungrafted one stays reachable.
 // Guix is explicit that grafting does not pretend to leave identity alone:
 // `guix build bash` and `guix build bash --no-grafts` name different store
 // items. Our field has to be in the canonical form from the start, because
@@ -144,11 +144,11 @@ func TestAnEmptySpecHasNoHash(t *testing.T) {
 	}
 }
 
-// ⛔ THE INSTALL PREFIX IS NOT PART OF WHAT A BOTTLE IS. Nix: "One cannot copy
+// ⛔ THE INSTALL PREFIX IS NOT PART OF WHAT A ARTIFACT IS. Nix: "One cannot copy
 // a store object to a store with a different store directory" — a cache stops
 // being shareable the moment identity depends on where the reader keeps it,
 // and having no fixed prefix is only an advantage while this holds.
-func TestTheHashIgnoresWhereTheBottleWillLand(t *testing.T) {
+func TestTheHashIgnoresWhereTheArtifactWillLand(t *testing.T) {
 	c := Concrete{Platform: "linux/x86-64", Variants: Variants{"cuda": {"true"}}}
 	before := c.Hash()
 	t.Setenv("ZPKG_DIR", "/scratch/someone/pkgx")
@@ -183,7 +183,7 @@ func TestVariantTagRoundTrips(t *testing.T) {
 }
 
 // ⛔ A SUFFIX THAT MERELY LOOKS LIKE A HASH IS NOT ONE. Reading "1.0-h2" as a
-// truncated hash would silently change which bottle a pin means.
+// truncated hash would silently change which artifact a pin means.
 func TestOnlyAnExactHashIsReadAsOne(t *testing.T) {
 	for _, tag := range []string{"3.3.11", "1.0-h2", "1.0-hABCDEFGHIJ012345", "1.0-h" + strings.Repeat("a", hashLen+1), "-habcdefghij012345"} {
 		if _, h := SplitVariantHash(tag); h != "" {
@@ -239,15 +239,15 @@ func TestAtLeastIsNotExactly(t *testing.T) {
 	}
 }
 
-// ⛔ EXACTNESS AND PROPAGATION BELONG TO THE REQUEST, NOT TO THE BOTTLE. Once
+// ⛔ EXACTNESS AND PROPAGATION BELONG TO THE REQUEST, NOT TO THE ARTIFACT. Once
 // concretised a node holds one definite set, and how it was asked for is not
-// part of what it IS — otherwise two bottles reached by different questions
+// part of what it IS — otherwise two artifacts reached by different questions
 // would hash apart while being the same bytes.
 func TestTheRequestShapeIsNotInTheIdentity(t *testing.T) {
 	a := Concrete{Variants: Variants{"fabrics": {"ofi"}}}
 	b := Concrete{Variants: Variants{"fabrics": {"ofi"}}}
 	if a.Hash() != b.Hash() {
-		t.Error("two identical bottles hash apart")
+		t.Error("two identical artifacts hash apart")
 	}
 	// The constraint type carries the question; Variants cannot express it,
 	// which is the point.
@@ -281,7 +281,7 @@ func TestParseConstraintsSpellings(t *testing.T) {
 	if !cs["cppflags"].Propagate || !cs["debug"].Propagate {
 		t.Error("the == and ~~ forms must propagate")
 	}
-	// And a rendering of the matching bottle reads back the human way.
+	// And a rendering of the matching artifact reads back the human way.
 	if got := (Variants{"cuda": {"true"}, "mpi": {"false"}, "fabrics": {"verbs", "ofi"}}).String(); got != "+cuda fabrics=ofi,verbs ~mpi" {
 		t.Errorf("String() = %q", got)
 	}
@@ -316,7 +316,7 @@ func TestTheSameVariantTwiceDisagreeing(t *testing.T) {
 	}
 }
 
-// A constraint on a variant the bottle does not carry is not satisfied: a
+// A constraint on a variant the artifact does not carry is not satisfied: a
 // build with no `cuda` variant is not a build with cuda off, it is a build
 // that was never asked the question.
 func TestAnAbsentVariantSatisfiesNothing(t *testing.T) {
@@ -325,7 +325,7 @@ func TestAnAbsentVariantSatisfiesNothing(t *testing.T) {
 		t.Fatal(err)
 	}
 	if cs.Satisfies(Variants{}) {
-		t.Error("~cuda was answered by a bottle with no cuda variant")
+		t.Error("~cuda was answered by an artifact with no cuda variant")
 	}
 	// And a variant present with the WRONG value is refused, which is the
 	// other half: the first check is about presence, this one about value.

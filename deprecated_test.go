@@ -1,4 +1,4 @@
-package bottle
+package artifact
 
 import (
 	"bytes"
@@ -115,7 +115,7 @@ func TestDeprecatedFileMissingOrUnparsableMeansEmpty(t *testing.T) {
 		return deprecatedLines("openssl.org")
 	}
 	// ⛔ UNSET NOW MEANS THE LIBRARY'S LIST, not an empty one. That is the
-	// whole of go-zpkg/bottle#186: an activation each binary had to remember
+	// whole of go-zpkg/artifact#186: an activation each binary had to remember
 	// reached pkgx and not pkgm, so the installer resolved `openssl.org@^3`
 	// to the end-of-life 3.6.4 while pkgx gave 3.5.8.
 	//

@@ -1,4 +1,4 @@
-package bottle
+package artifact
 
 import (
 	"fmt"
@@ -23,7 +23,7 @@ import (
 // So the FORMAT moves here, where both ends can reach it, and the
 // RESOLUTION stays in bk. That is the real seam: deciding which versions a
 // set means today needs a pantry, an overrides set and a version resolver,
-// none of which belong in a bottle client. Reading a file that records the
+// none of which belong in an artifact client. Reading a file that records the
 // answer needs none of them.
 //
 // Writing moves with reading, deliberately. A format whose writer lives in
@@ -112,7 +112,7 @@ func RenderLock(d Lock) string {
 		"# counts \"a canonical hash of the package.py recipes\" among a spec hash's\n" +
 		"# inputs. A version alone calls two builds the same when a build script\n" +
 		"# changed under them.\n#\n" +
-		"# What this still does NOT pin: the BYTES of the built bottle. The spec\n" +
+		"# What this still does NOT pin: the BYTES of the built artifact. The spec\n" +
 		"# hash covers the inputs, as Nix's and Spack's do; an output digest is a\n" +
 		"# different promise and is not made here.\n#\n" +
 		"# Sorted by project, not in build order: a lock is read as a diff, and a\n" +
@@ -123,7 +123,7 @@ func RenderLock(d Lock) string {
 		"# PUBLISHED for this platform. A lock pins what the RECIPES can build,\n" +
 		"# which runs ahead of what the factory has published: measured\n" +
 		"# 2026-10-08, a fresh lock of curl.se for linux/aarch64 had 2 of its 5\n" +
-		"# pins ahead of the published bottles, and `zpkgx --lock` refused it.\n" +
+		"# pins ahead of the published artifacts, and `zpkgx --lock` refused it.\n" +
 		"# `zbk lock` says at write time which pins are not installable, and\n" +
 		"# `zbk lock -runnable` pins what is published instead.\n\n")
 	fmt.Fprintf(&b, "lockfile_version = %d\n", d.Version)
