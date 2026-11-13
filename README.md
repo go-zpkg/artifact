@@ -21,8 +21,15 @@ so both tools share one source of truth for the bottle protocol.
 
 ## Highlights
 
-- Reads `package.yml` + `versions.txt` from the pantry, BFS the runtime
-  dependency closure, streams gzip/xz + tar into `ZPKG_DIR`.
+- Reads `package.hcl` + `versions.txt` from the pantry — falling back to
+  `package.yml`, which is **converted to HCL on the way in** (`zpkg.go:276`)
+  and is being retired with the rest of the pkgx compatibility — then BFS the
+  runtime dependency closure and streams gzip/xz + tar into `ZPKG_DIR`.
+  ⛔ "The pantry" is **two** trees: our own recipes merged over
+  `pkgxdev/pantry`, which `PantryBase` still reads at resolve time
+  (`zpkg.go:68`) and which is a dependency being wound down — the sovereign
+  pantry is written, not converted, because that corpus carries no licence to
+  convert (go-zpkg/packages#431, #440).
 - **Soname-exact FROM-scratch completion**: walks each bottle's ELF
   `DT_NEEDED` and pulls the provider version that ships the exact soname an
   ABI needs (not merely the latest), so drifted sonames resolve.
