@@ -23,9 +23,9 @@ var (
 	libstdcxxSonames = []string{"libgcc_s.so", "libstdc++.so"}
 	gccSonames       = []string{"libatomic.so", "libgomp.so", "libquadmath.so", "libitm.so"}
 	// The OTHER C++ runtime. libstdc++ above is gcc's; this is llvm's, and the
-	// sovereign toolchain links it — bk's own driver flags say
-	// `-stdlib=libc++ … --unwindlib=libunwind` out of ${BK_LIBCXX_PREFIX}.
-	// So anything bk builds in pkgx-libc mode that touches C++ NEEDs these
+	// sovereign toolchain links it — zbk's own driver flags say
+	// `-stdlib=libc++ … --unwindlib=libunwind` out of ${ZBK_LIBCXX_PREFIX}.
+	// So anything zbk builds under `--libc=zpkgx` that touches C++ NEEDs these
 	// three, and nothing supplied them at install time:
 	//
 	//	ninja: error while loading shared libraries: libc++.so.1
