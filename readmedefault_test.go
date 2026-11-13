@@ -16,9 +16,9 @@ import (
 // packages are org-scoped and did not follow the repository transfer, so
 // every artifact stayed where it was.
 //
-// zpkgx's two usage strings had exactly this defect and are now gated there
+// zpkx's two usage strings had exactly this defect and are now gated there
 // (TestEveryHelpTextNamesTheRealRegistryDefault). The README was not, and on
-// 2026-11-07 it cost a reading: a stale `zpkgs` binary printed the wrong
+// 2026-11-07 it cost a reading: a stale `zpks` binary printed the wrong
 // default, the claim looked corroborated by this README, and half an hour
 // went into "the clients already point at the new org" before the constant
 // settled it. A reader who follows the stated default points ZPKG_DIST at a

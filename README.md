@@ -4,7 +4,7 @@
 ![Go](https://img.shields.io/badge/Go-1.27%2B-00ADD8?logo=go&logoColor=white)
 ![License](https://img.shields.io/badge/license-BSD--3--Clause-blue)
 
-The pure-Go **artifact client** — the shared backend of the `zpkgx` family. It
+The pure-Go **artifact client** — the shared backend of the `zpkx` family. It
 resolves a package's dependency closure, downloads the artifacts from the
 configured `ZPKG_DIST` (default: `oci://ghcr.io/go-pkgx/packages`, the signed
 registry the published artifacts are actually in — see `DistBase` in `zpkg.go`),
@@ -14,8 +14,8 @@ dependencies of its own.
 
 Consumed by:
 
-- [go-zpkg/zpkgm](https://github.com/go-zpkg/zpkgm) — the *installer*
-- [go-zpkg/zpkgx](https://github.com/go-zpkg/zpkgx) — the *runtime*
+- [go-zpkg/zpkm](https://github.com/go-zpkg/zpkm) — the *installer*
+- [go-zpkg/zpkx](https://github.com/go-zpkg/zpkx) — the *runtime*
 
 so both tools share one source of truth for the artifact protocol.
 
@@ -37,7 +37,7 @@ so both tools share one source of truth for the artifact protocol.
   DNS.
 - **Nothing outside the store.** A blob is staged inside `$ZPKG_DIR`, not in
   the system temp directory: `FROM scratch` has no `/tmp`, and until this was
-  measured by building that image and running it, `zpkgs catalog update` failed
+  measured by building that image and running it, `zpks catalog update` failed
   on the one image this package exists to serve.
 
 ## What `Extract` refuses
@@ -97,9 +97,9 @@ trust set and fails closed. Not "every install": every pull.
 
 That distinction is the whole of it, and it has been got wrong twice. The
 first time, the check lived in `DownloadArtifact`, which only the mirror
-tooling calls, so `zpkgx` and `zpkgm` installed unsigned artifacts while
+tooling calls, so `zpkx` and `zpkm` installed unsigned artifacts while
 advertising otherwise. The second time was the **catalogue** — the list of
-project names `zpkgs ls` and `<TAB>` read — which was fetched past the check
+project names `zpks ls` and `<TAB>` read — which was fetched past the check
 because it is "only a list of names".
 
 A list of names is what a person then types. Forging it does not get an
@@ -126,7 +126,7 @@ of keys and a *threshold* of them) with Nix's spelling for the list.
 | `ZPKG_TRUST_THRESHOLD` | how many *distinct* trusted keys must have signed (default `1`) |
 
 ```
-ZPKG_EXTRA_TRUSTED_KEYS='alice:RWQ…' ZPKG_TRUST_THRESHOLD=2 zpkgx +fftw.org
+ZPKG_EXTRA_TRUSTED_KEYS='alice:RWQ…' ZPKG_TRUST_THRESHOLD=2 zpkx +fftw.org
 ```
 
 Two people building the same inputs get the **same** hash — deliberately, and
@@ -375,7 +375,7 @@ A binary may also carry a default, `DefaultDeprecated`, set before the first
 resolution — because an opt-in variable fixes nothing: with the variable as
 the only source, this feature changed no answer for anybody, and openssl's
 3.6 line went end-of-life with `^3` still resolving to 3.6.4 everywhere.
-`zpkgx` sets it from an embedded, dated list.
+`zpkx` sets it from an embedded, dated list.
 
 The precedence is deliberate, and the surprising direction is the one to
 avoid:
@@ -466,7 +466,7 @@ one of them comes to be forgotten — which is what happened:
 `*NotPublishedError` alone covers the *rare* half. Measured against the
 published `darwin/aarch64` catalogue on 2026-10-23, **567 of 1940 projects**
 had a recipe and no artifact, and for the length of one release
-`zpkgx`'s "you can ask for this" hint could not see any of them.
+`zpkx`'s "you can ask for this" hint could not see any of them.
 
 ⛔ The prose predicate that preceded them is still here as
 `IsNotPublished`'s last resort, and it is **too wide once it leaves this

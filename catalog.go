@@ -573,10 +573,10 @@ func UnmarshalCatalog(b []byte) (Catalog, error) {
 // ⛔⛔ THIS NAME ADDRESSES A PUBLISHED ARTEFACT, AND THE RENAME MOVED THE NAME
 // WITHOUT MOVING THE ARTEFACT. The go-pkgx → go-zpkg pass (#192) rewrote it
 // from `go-pkgx.dev/catalog` to `go-zpkg.github.io/catalog`. Nothing publishes
-// that, so every `zpkgs catalog update` on defaults has failed since, and a
+// that, so every `zpks catalog update` on defaults has failed since, and a
 // FROM-scratch image built around the result has no catalogue in it at all:
 //
-//	zpkgs: catalog update: go-zpkg.github.io/catalog is not published in
+//	zpks: catalog update: go-zpkg.github.io/catalog is not published in
 //	ghcr.io/go-pkgx/packages/go-zpkg.github.io/catalog … 403: denied
 //
 // Measured 2026-11-04 with ghcrprobe, anonymously, against a positive control

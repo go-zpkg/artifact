@@ -43,9 +43,9 @@ import (
 //
 // GitHub's container packages are org-scoped and did NOT follow the repository
 // transfer: the repositories all moved, every artifact stayed. So those five
-// releases point the whole fleet at an empty registry, and `zpkgx` cannot
+// releases point the whole fleet at an empty registry, and `zpkx` cannot
 // fetch anything with its defaults — which is what the `FROM scratch, offline`
-// check was reporting in go-zpkg/zpkgx#141 while I read it as a path problem.
+// check was reporting in go-zpkg/zpkx#141 while I read it as a path problem.
 //
 // Renaming a URL did not move what it addresses. The artifacts move by COPY,
 // and this line follows them — not the other way round. Until that copy has

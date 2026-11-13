@@ -119,11 +119,11 @@ func RenderLock(d Lock) string {
 		"# topological order makes every line move when one dependency does.\n#\n" +
 		"# `zbk lock --check <this file>` re-resolves and says what moved.\n" +
 		"# `zbk factory --lock <this file>` BUILDS these versions.\n#\n" +
-		"# `zpkgx --lock <this file>` RUNS them — but only if every pin is\n" +
+		"# `zpkx --lock <this file>` RUNS them — but only if every pin is\n" +
 		"# PUBLISHED for this platform. A lock pins what the RECIPES can build,\n" +
 		"# which runs ahead of what the factory has published: measured\n" +
 		"# 2026-10-08, a fresh lock of curl.se for linux/aarch64 had 2 of its 5\n" +
-		"# pins ahead of the published artifacts, and `zpkgx --lock` refused it.\n" +
+		"# pins ahead of the published artifacts, and `zpkx --lock` refused it.\n" +
 		"# `zbk lock` says at write time which pins are not installable, and\n" +
 		"# `zbk lock -runnable` pins what is published instead.\n\n")
 	fmt.Fprintf(&b, "lockfile_version = %d\n", d.Version)

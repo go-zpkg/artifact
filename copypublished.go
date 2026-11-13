@@ -50,7 +50,7 @@ var ErrSameNamespace = errors.New("artifact: source and destination are the same
 // walks a manifest and its blobs — it would move the artifact and leave its
 // signature behind, because a signature is not a child of the manifest but a
 // REFERRER to it. An artifact that arrives unverifiable is worse than one that
-// does not arrive: `zpkgs install` verifies by default, so the first would be
+// does not arrive: `zpks install` verifies by default, so the first would be
 // a silent trust failure at install time and the second is a 404 at copy time.
 //
 // Digests survive by construction. ExtendedCopy moves content by descriptor,

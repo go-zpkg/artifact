@@ -25,7 +25,7 @@ import (
 //
 // The result is parallel to the input: one line per spec, "" for a spec that
 // records nothing. A caller must say so rather than printing an empty cell —
-// see the note zpkgs prints for an artifact published before identities existed.
+// see the note zpks prints for an artifact published before identities existed.
 func Distinguish(specs []Concrete) []string {
 	out := make([]string, len(specs))
 	if len(specs) == 0 {
@@ -213,7 +213,7 @@ func sortedCopy(v []string) []string {
 }
 
 // Describe is Distinguish for a single spec with nothing to compare against:
-// the whole of what was recorded, which is what `zpkgs builds` falls back to
+// the whole of what was recorded, which is what `zpks builds` falls back to
 // when a version has exactly one build.
 //
 // ⛔ A SUMMARY, NOT THE CLOSURE. Printing 54 dependencies answers a question
