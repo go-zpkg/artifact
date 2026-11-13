@@ -1,0 +1,8 @@
+go-zpkg/artifact#231 @899b2d6 PASS SUCCESS:28
+go-zpkg/artifact#231: 27 check(s), 0 status(es), all green
+merged
+branch artifact/docfront deleted
+waiting up to 30m0s for CI on the default branch at 6779a7ff
+CI on main is green at 6779a7ff (1 run(s))
+tagged v0.87.0 at 6779a7ff, the merge commit of go-zpkg/artifact#231
+released v0.87.0

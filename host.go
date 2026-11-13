@@ -2,7 +2,7 @@
 // project's runtime dependency closure from the pantry, downloads the
 // artifacts from the configured ZPKG_DIST and installs them — with no runtime
 // dependencies of its own (pure Go, CGO_ENABLED=0, runnable on a `FROM
-// scratch` image). It is imported by zpkgm, zpkgx and zpkb so there is one
+// scratch` image). It is imported by zpkm, zpkx and zpkb so there is one
 // source of truth.
 //
 // ⛔ THE DEFAULT REGISTRY IS STILL oci://ghcr.io/go-pkgx/packages, and this

@@ -35,7 +35,7 @@ func TestTheLockHeaderNamesCommandsThatExist(t *testing.T) {
 	// header says nothing about how to use it is a file people delete.
 	for _, right := range []string{
 		"zbk lock --check",
-		"zpkgx --lock",
+		"zpkx --lock",
 		"zbk factory --lock",
 	} {
 		if !strings.Contains(out, right) {

@@ -14,7 +14,7 @@ import (
 // to `ghcr.io/go-zpkg/packages`, and v0.64.0 through v0.68.0 shipped it.
 // GitHub's container packages are org-scoped and do NOT follow a repository
 // transfer: every repository moved, every artifact stayed. So the whole fleet
-// pointed at an empty registry, `zpkgx` could fetch nothing with its defaults,
+// pointed at an empty registry, `zpkx` could fetch nothing with its defaults,
 // and the only thing that noticed was a container check in another repository
 // whose message I first read as a path problem.
 //

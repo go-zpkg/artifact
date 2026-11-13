@@ -15,7 +15,7 @@ import (
 // v0.64.0–v0.68.0 would also have reported, had anything reported anything: a
 // manifest can copy perfectly and leave its signature behind, because a cosign
 // signature is a REFERRER and not a child of the manifest. A copy checked by
-// pulling the tarball back would pass on an artifact that `zpkgs install` then
+// pulling the tarball back would pass on an artifact that `zpks install` then
 // refuses, and refusing at install time is the expensive place to find out.
 //
 // So the destination is checked with VerifyArtifact — the same call the install
