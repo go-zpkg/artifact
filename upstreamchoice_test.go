@@ -20,7 +20,7 @@ func TestNoUpstreamByDefault(t *testing.T) {
 	}
 }
 
-// "none" is the explicit off, spelled as ZPKG_PANTRY_OVERLAY spells it. A
+// "none" is the explicit off, spelled as ZPKG_RECIPES_OVERLAY spells it. A
 // second spelling for the same idea is what this repository keeps paying for.
 func TestNoneTurnsTheUpstreamOff(t *testing.T) {
 	old := UpstreamDist
