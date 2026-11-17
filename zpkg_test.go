@@ -737,7 +737,7 @@ func TestApplyEnvOverlay(t *testing.T) {
 	defer func() { PantryOverlay = ob }()
 	PantryOverlay = ""
 	applyEnv(func(k string) string {
-		if k == "ZPKG_PANTRY_OVERLAY" {
+		if k == "ZPKG_RECIPES_OVERLAY" {
 			return "https://ov.example/projects/"
 		}
 		return ""
@@ -759,7 +759,7 @@ func TestOverlayDefaultsToOurs(t *testing.T) {
 	PantryOverlay = "https://raw.githubusercontent.com/go-zpkg/pantry-overlay/main/projects"
 	applyEnv(func(string) string { return "" })
 	if PantryOverlay == "" {
-		t.Fatal("an unset ZPKG_PANTRY_OVERLAY turned the overlay off")
+		t.Fatal("an unset ZPKG_RECIPES_OVERLAY turned the overlay off")
 	}
 	if !strings.Contains(PantryOverlay, "go-zpkg/pantry-overlay") {
 		t.Errorf("PantryOverlay = %q, want our overlay", PantryOverlay)
@@ -774,7 +774,7 @@ func TestOverlayCanBeTurnedOff(t *testing.T) {
 	defer func() { PantryOverlay = ob }()
 	PantryOverlay = "https://ov.example/projects"
 	applyEnv(func(k string) string {
-		if k == "ZPKG_PANTRY_OVERLAY" {
+		if k == "ZPKG_RECIPES_OVERLAY" {
 			return "none"
 		}
 		return ""

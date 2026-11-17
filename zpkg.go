@@ -23,7 +23,7 @@ import (
 )
 
 // Base URLs for the pkgx distribution + pantry; overridable in tests, and at
-// runtime via $ZPKG_DIST / $ZPKG_PANTRY so a consumer can point pkgm/pkgx at a
+// runtime via $ZPKG_DIST / $ZPKG_RECIPES so a consumer can point pkgm/pkgx at a
 // local mirror produced by the `mirror` tool.
 //
 // DistBase defaults to the **signed** OCI registry so the default install
@@ -100,7 +100,7 @@ var (
 	// binary died on a library nothing had installed. The corrected recipe was
 	// in the overlay the whole time, and nothing consulted it.
 	//
-	// ZPKG_PANTRY_OVERLAY overrides it; "none" turns it off and resolves
+	// ZPKG_RECIPES_OVERLAY overrides it; "none" turns it off and resolves
 	// everything upstream.
 	PantryOverlay = "https://raw.githubusercontent.com/go-zpkg/pantry-overlay/main/projects"
 
@@ -122,7 +122,7 @@ var (
 	// become a stated choice rather than a built-in assumption.
 	//
 	// Set ZPKG_UPSTREAM_DIST to point at one; "none" is the explicit off, as
-	// with ZPKG_PANTRY_OVERLAY. Our own factory sets it while the rebuild is
+	// with ZPKG_RECIPES_OVERLAY. Our own factory sets it while the rebuild is
 	// in flight, which puts the dependency in a workflow where it can be read
 	// instead of in a constant where it cannot.
 	UpstreamDist = ""
@@ -189,12 +189,12 @@ func ociClientFor(base string) (*OCIClient, error) {
 	return c, nil
 }
 
-// applyEnv overrides DistBase/PantryBase from ZPKG_DIST/ZPKG_PANTRY (testable).
+// applyEnv overrides DistBase/PantryBase from ZPKG_DIST/ZPKG_RECIPES (testable).
 func applyEnv(get func(string) string) {
 	if d := get("ZPKG_DIST"); d != "" {
 		DistBase = strings.TrimRight(d, "/")
 	}
-	if p := get("ZPKG_PANTRY"); p != "" {
+	if p := get("ZPKG_RECIPES"); p != "" {
 		PantryBase = strings.TrimRight(p, "/")
 	}
 	// ZPKG_IMPLICIT_ROOTS=none says the MACHINE supplies the implicit system
@@ -216,7 +216,7 @@ func applyEnv(get func(string) string) {
 	if u := get("ZPKG_UPSTREAM_DIST"); u != "" {
 		UpstreamDist = strings.TrimRight(u, "/")
 	}
-	if p := get("ZPKG_PANTRY_OVERLAY"); p != "" {
+	if p := get("ZPKG_RECIPES_OVERLAY"); p != "" {
 		if p == "none" {
 			PantryOverlay = ""
 		} else {
@@ -915,7 +915,7 @@ func versionsForSourced(project, osn, arch string) ([]Ver, bool, error) {
 
 // haveUpstream reports whether a second distribution is configured at all.
 //
-// "none" is the explicit off, spelled as ZPKG_PANTRY_OVERLAY spells it, so a
+// "none" is the explicit off, spelled as ZPKG_RECIPES_OVERLAY spells it, so a
 // reader meeting one knows the other.
 func haveUpstream() bool {
 	return UpstreamDist != "" && UpstreamDist != "none"

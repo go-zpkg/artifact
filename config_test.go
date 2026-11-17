@@ -91,7 +91,7 @@ func TestEnvPrecedence(t *testing.T) {
 		t.Errorf("absent env should fall back to file: got %q", got)
 	}
 	// Absent everywhere → "".
-	if got := Env("ZPKG_PANTRY"); got != "" {
+	if got := Env("ZPKG_RECIPES"); got != "" {
 		t.Errorf("absent everywhere = %q, want empty", got)
 	}
 }
@@ -118,7 +118,7 @@ func TestConfigParseError(t *testing.T) {
 		t.Errorf("env should still resolve on parse error: got %q", got)
 	}
 	// A file-only key falls back to "" (map stayed empty).
-	if got := Env("ZPKG_PANTRY"); got != "" {
+	if got := Env("ZPKG_RECIPES"); got != "" {
 		t.Errorf("parse-error fallback = %q, want empty", got)
 	}
 }

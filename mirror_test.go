@@ -49,7 +49,7 @@ func TestApplyEnvOverride(t *testing.T) {
 		switch k {
 		case "ZPKG_DIST":
 			return "https://mirror.example/"
-		case "ZPKG_PANTRY":
+		case "ZPKG_RECIPES":
 			return "https://pantry.example/projects/"
 		}
 		return ""
