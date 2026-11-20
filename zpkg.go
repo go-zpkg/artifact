@@ -325,6 +325,35 @@ func mergeRecipe(base, over map[string]any) map[string]any {
 	return out
 }
 
+// essentials are the keys a recipe must state itself to be standalone.
+var essentials = []string{"versions", "distributable", "build"}
+
+// MissingEssentials names the essential keys a recipe document does not state,
+// in a fixed order so two runs print the same line. It is the ONE definition of
+// "standalone": `zpkb lint --require-standalone`, `zpkb closure
+// -require-standalone`, the factory's loader and recipeDoc all call it, so none
+// can disagree about what a fragment is (go-zpkg/zpkb#514).
+//
+// `members` exempts a recipe entirely: a SET names a tree of packages by
+// constraint and has no source and no build of its own.
+func MissingEssentials(doc map[string]any) []string {
+	if _, ok := doc["members"]; ok {
+		return nil
+	}
+	var miss []string
+	for _, k := range essentials {
+		if _, ok := doc[k]; !ok {
+			miss = append(miss, k)
+		}
+	}
+	return miss
+}
+
+// IsStandalone reports whether the recipe document states every essential key
+// itself, and is therefore the whole recipe rather than a fragment merged over
+// upstream's.
+func IsStandalone(doc map[string]any) bool { return len(MissingEssentials(doc)) == 0 }
+
 // recipeDoc fetches a recipe and reads it as a document.
 //
 // One place parses, so the three readers below differ only in what they look
@@ -341,6 +370,11 @@ func recipeDoc(project string) (map[string]any, error) {
 		return nil, fmt.Errorf("%s: %w", project, err)
 	}
 	switch {
+	case hasBase && hasOver && IsStandalone(over):
+		// A recipe that states its own versions, distributable and build is the
+		// WHOLE recipe (go-zpkg/zpkb#514): merging upstream's keys underneath
+		// would hand a consumer dependencies we never declared.
+		return over, nil
 	case hasBase && hasOver:
 		return mergeRecipe(base, over), nil
 	case hasOver:

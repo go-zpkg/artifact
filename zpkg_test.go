@@ -1742,6 +1742,88 @@ func TestRecipeDocMergesTheOverlayOverThePantry(t *testing.T) {
 	}
 }
 
+// A recipe that states its own versions, distributable and build is the WHOLE
+// recipe (go-zpkg/zpkb#514): nothing of upstream's twin leaks into it, while a
+// fragment keeps inheriting all of it.
+func TestRecipeDocStandaloneOverlayIsWholeAndFragmentInherits(t *testing.T) {
+	const upstream = "versions:\n  - '2.0'\n" +
+		"distributable:\n  url: https://up.example/acme.tgz\n" +
+		"dependencies:\n  openssl.org: ^1.1\n  unicode.org: ^71\n" +
+		"build:\n  dependencies:\n    ninja-build.org: '*'\n  working-directory: build\n" +
+		"  env:\n    linux/x86-64:\n      LDFLAGS: -pie\n  script: make\n"
+	up := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if !strings.HasSuffix(r.URL.Path, "package.yml") {
+			http.NotFound(w, r)
+			return
+		}
+		_, _ = io.WriteString(w, upstream)
+	}))
+	defer up.Close()
+	ov := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch {
+		case strings.HasSuffix(r.URL.Path, "/whole.org/package.hcl"):
+			_, _ = io.WriteString(w, "versions = [\"1.0\"]\n"+
+				"distributable = { url = \"https://ours.example/acme.tgz\" }\n"+
+				"dependencies = { \"openssl.org\" = \"^3\" }\n"+
+				"build = { script = \"./configure\" }\n")
+		case strings.HasSuffix(r.URL.Path, "/frag.org/package.hcl"):
+			_, _ = io.WriteString(w, "dependencies = { \"openssl.org\" = \"^3\" }\n")
+		default:
+			http.NotFound(w, r)
+		}
+	}))
+	defer ov.Close()
+	oldBase, oldOver := PantryBase, PantryOverlay
+	t.Cleanup(func() { PantryBase, PantryOverlay = oldBase, oldOver })
+	PantryBase, PantryOverlay = up.URL, ov.URL
+
+	whole, err := recipeDoc("whole.org")
+	if err != nil {
+		t.Fatal(err)
+	}
+	deps, _ := whole["dependencies"].(map[string]any)
+	if _, ok := deps["unicode.org"]; ok || deps["openssl.org"] != "^3" {
+		t.Errorf("standalone: upstream dependency leaked, or ours lost: %v", deps)
+	}
+	b, _ := whole["build"].(map[string]any)
+	for _, k := range []string{"dependencies", "env", "working-directory"} {
+		if _, ok := b[k]; ok {
+			t.Errorf("standalone: build.%s inherited from upstream: %v", k, b)
+		}
+	}
+
+	frag, err := recipeDoc("frag.org")
+	if err != nil {
+		t.Fatal(err)
+	}
+	fdeps, _ := frag["dependencies"].(map[string]any)
+	fb, _ := frag["build"].(map[string]any)
+	if _, ok := fdeps["unicode.org"]; !ok {
+		t.Errorf("fragment: dependencies not inherited: %v", fdeps)
+	}
+	for _, k := range []string{"dependencies", "env", "working-directory"} {
+		if _, ok := fb[k]; !ok {
+			t.Errorf("fragment: build.%s not inherited: %v", k, fb)
+		}
+	}
+}
+
+func TestMissingEssentialsAndIsStandalone(t *testing.T) {
+	full := map[string]any{"versions": 1, "distributable": 1, "build": 1}
+	if m := MissingEssentials(full); len(m) != 0 || !IsStandalone(full) {
+		t.Errorf("full recipe: %v", m)
+	}
+	if m := MissingEssentials(map[string]any{"build": 1}); strings.Join(m, ",") != "versions,distributable" {
+		t.Errorf("order or content: %v", m)
+	}
+	if IsStandalone(map[string]any{"dependencies": 1}) {
+		t.Error("a fragment is not standalone")
+	}
+	if !IsStandalone(map[string]any{"members": 1}) {
+		t.Error("a set is exempt")
+	}
+}
+
 // Only one side has it, and neither does.
 func TestRecipeDocWithOneSideOrNeither(t *testing.T) {
 	only := func(which string) *httptest.Server {
