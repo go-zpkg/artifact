@@ -33,7 +33,7 @@ func VerifyRequired() bool {
 // accept is a TrustSet — this key unless the operator says otherwise, plus
 // whatever ZPKG_EXTRA_TRUSTED_KEYS adds, and a threshold over the lot. See
 // trust.go; everything that verifies an artifact goes through LoadTrustSet.
-var SigningPublicKey = "RWTfNcOkaTHT5lsudyEtExOI45lQQEHCu+fckxlKljWtzfuFTQtgjLZT"
+var SigningPublicKey = "RWThxRI20GKw0BWqZHXpqJ/Wo2nX8ntSLIrXIFwK/FKm9F/vSE6Bl+mU"
 
 // RetiredSigningPublicKeys are keys this project HAS signed with and still
 // trusts, newest first, as `name:key` entries.
@@ -64,6 +64,8 @@ var SigningPublicKey = "RWTfNcOkaTHT5lsudyEtExOI45lQQEHCu+fckxlKljWtzfuFTQtgjLZT
 //
 // It signed every artifact in the registry up to 2026-11-06.
 var RetiredSigningPublicKeys = []string{
+	// In service 2026-11-06 to 2026-11-21 (go-zpkg/packages#440, step 4).
+	"go-zpkg-until-2026-11-21:RWTfNcOkaTHT5lsudyEtExOI45lQQEHCu+fckxlKljWtzfuFTQtgjLZT",
 	"go-zpkg-until-2026-11:RWQ+rmH+fXy2iYr+gReQAOQtYWtH0A7UlxcAa2hpr+txNBwGqtpFsR6L",
 }
 
