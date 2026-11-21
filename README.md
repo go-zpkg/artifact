@@ -167,12 +167,16 @@ is already signed, so a retired key stays in the trust set and nothing needs
 re-signing. Rotation is an edit to two variables: the new key goes up, the old
 one moves down.
 
-This has happened once, on **2026-11-06**:
+This has happened twice, on **2026-11-06** and **2026-11-21**:
 
 | key id | state | what it signed |
 | --- | --- | --- |
-| `df35c3a46931d3e6` | current | everything from 2026-11-06 |
-| `3eae61fe7d7cb689` | retired, as `go-zpkg-until-2026-11` | every artifact before it |
+| `e1c51236d062b0d0` | current (`RWThxRI20GKw0BWqZHXpqJ/Wo2nX8ntSLIrXIFwK/FKm9F/vSE6Bl+mU`) | everything from 2026-11-21 |
+| `df35c3a46931d3e6` | retired, as `go-zpkg-until-2026-11-21` | 2026-11-06 to 2026-11-21 |
+| `3eae61fe7d7cb689` | retired, as `go-zpkg-until-2026-11` | every artifact before 2026-11-06 |
+
+A client built before 2026-11-21 does not trust the current key and refuses
+what it signs: upgrade it, or add the key with `ZPKG_EXTRA_TRUSTED_KEYS='go-zpkg:RWThxRI20GKw0BWqZHXpqJ/Wo2nX8ntSLIrXIFwK/FKm9F/vSE6Bl+mU'`.
 
 ⛔ **Retired and not revoked, which was a judgement and not a finding.** The
 old key's private half could not be located — two scans of the maintainer's

@@ -14,7 +14,7 @@ func sampleLock() Lock {
 		Version:   LockfileVersion,
 		Platform:  "linux/x86-64",
 		Generated: "2026-10-06T09:00:00Z",
-		ZPKB:       "v0.12.0",
+		ZPKB:      "v0.12.0",
 		Roots:     []string{"curl.se", "gnu.org/bash"},
 		Pantry:    "2df061bd",
 		Overlay:   "a1b2c3d4",

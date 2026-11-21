@@ -19,9 +19,32 @@ import (
 // These are literals on purpose. A test that recomputed them from the same
 // variables would assert that a equals a.
 const (
-	keyIDNow     = "df35c3a46931d3e6" // in service from 2026-11-06
-	keyIDRetired = "3eae61fe7d7cb689" // signed everything before it
+	keyIDNow      = "e1c51236d062b0d0" // in service from 2026-11-21
+	keyIDPrevious = "df35c3a46931d3e6" // signed 2026-11-06 to 2026-11-21
+	keyIDRetired  = "3eae61fe7d7cb689" // signed everything before 2026-11-06
 )
+
+// The current key parses and its id is the pinned literal, a signature from a
+// freshly generated key is refused, and both earlier keys still verify.
+func TestTheRotationOf2026_11_21(t *testing.T) {
+	ts := DefaultTrustSet()
+	if len(ts.Signers) != 3 {
+		t.Fatalf("default trust set holds %d key(s): %v", len(ts.Signers), ts.Names())
+	}
+	if ts.Signers[0].KeyID() != keyIDNow || ts.Signers[1].KeyID() != keyIDPrevious || ts.Signers[2].KeyID() != keyIDRetired {
+		t.Errorf("trust set order = %s,%s,%s", ts.Signers[0].KeyID(), ts.Signers[1].KeyID(), ts.Signers[2].KeyID())
+	}
+	if _, err := ParseSigner(RetiredSigningPublicKeys[0]); err != nil {
+		t.Fatalf("top retired entry does not parse: %v", err)
+	}
+
+	const digest = "sha256:bb"
+	stranger := mustGenerate(t)
+	names, untrusted, _ := ts.Count(digest, []Attestation{signFor(t, stranger, digest, false)})
+	if len(names) != 0 || untrusted != 1 {
+		t.Errorf("a freshly generated key was not refused: names=%v untrusted=%d", names, untrusted)
+	}
+}
 
 func TestTheRotationOf2026_11(t *testing.T) {
 	id, _, err := sign.ParsePublicKey(SigningPublicKey)
@@ -56,7 +79,7 @@ func TestTheRotationOf2026_11(t *testing.T) {
 	// Both must be in the default trust set, and the old one must not be
 	// the current one.
 	ts := DefaultTrustSet()
-	if len(ts.Signers) != 2 {
+	if len(ts.Signers) != 3 {
 		t.Fatalf("default trust set holds %d key(s): %v", len(ts.Signers), ts.Names())
 	}
 	if SigningPublicKey == RetiredSigningPublicKeys[0] {
