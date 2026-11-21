@@ -74,6 +74,46 @@ func TestStubBinsStagedBakesGuestPaths(t *testing.T) {
 	}
 }
 
+// TestStubBinsStagedFollowsTheHashedDirectory: every installed tree is
+// `v<version>-h<hash>`, so the guest path a stub execs must carry the hash too.
+// The fixture above lays out the bare `v<version>` form, which is why it never
+// saw StorePrefix(guestDir, …) fall back to a directory that does not exist.
+func TestStubBinsStagedFollowsTheHashedDirectory(t *testing.T) {
+	root := t.TempDir()
+	hostDir := filepath.Join(root, "rootfs", "zpkg")
+	const guestDir = "/zpkg"
+	ver := ParseVer("1.2.3")
+	const hash = "rzo6cxrapx2tw2or"
+	prefix := StoreBuildPrefix(hostDir, "acme.org/tool", ver, hash)
+	if err := os.MkdirAll(filepath.Join(prefix, "bin"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(prefix, "bin", "tool"), []byte("#!/bin/sh\n"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	defer fakeServer(t, map[string]fakePkg{
+		"acme.org/tool": {versions: []string{"1.2.3"}, yaml: "provides:\n  - bin/tool\n"},
+	})()
+
+	n, err := StubBinsStaged([]Resolved{{Project: "acme.org/tool", Version: ver}}, Stage{
+		Dir: hostDir, GuestDir: guestDir, Prefix: filepath.Join(root, "rootfs", "usr"),
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if n != 1 {
+		t.Fatalf("wrote %d stubs, want 1", n)
+	}
+	b, err := os.ReadFile(filepath.Join(root, "rootfs", "usr", "bin", "tool"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := `exec "` + guestDir + "/acme.org/tool/" + StoreBuildDirName(ver, hash) + `/bin/tool"`
+	if !strings.Contains(string(b), want) {
+		t.Errorf("stub does not exec the hashed guest path, want %s:\n%s", want, b)
+	}
+}
+
 // TestStubBinsUnstagedIsUnchanged: pkgm installs onto the machine it runs on,
 // where staging and running paths are the same. That path must keep working
 // byte for byte.
