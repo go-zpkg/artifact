@@ -6,7 +6,7 @@ require (
 	github.com/go-attest/sign v0.3.0
 	github.com/go-compressions/xz v0.3.1
 	github.com/hashicorp/hcl/v2 v2.25.0
-	github.com/klauspost/compress v1.20.4
+	github.com/klauspost/compress v1.20.5
 	github.com/opencontainers/go-digest v1.0.0
 	github.com/opencontainers/image-spec v1.1.1
 	github.com/ulikunitz/xz v0.5.17
