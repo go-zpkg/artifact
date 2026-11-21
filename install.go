@@ -259,7 +259,13 @@ func StubBinsStaged(closure []Resolved, s Stage) (int, error) {
 	n := 0
 	for _, r := range closure {
 		pkgPrefix := StorePrefix(dir, r.Project, r.Version)
-		guestPrefix := StorePrefix(guestDir, r.Project, r.Version)
+		// ⛔ DERIVED FROM THE HOST PREFIX, NEVER RESOLVED AGAINST guestDir.
+		// StorePrefix reads the disk to find the installed build's hashed
+		// directory, and the guest's directory does not exist on the staging
+		// machine: it fell back to the bare `v<version>`, so every stub exec'd
+		// `<guestDir>/gnu.org/coreutils/v9.11/bin/mkdir` while the tree holds
+		// `v9.11-h<hash>` (go-zpkg/packages#440, lz4.org smoke run 44943728007).
+		guestPrefix := guestDir + strings.TrimPrefix(pkgPrefix, dir)
 		_, provides, err := FetchMetaFor(r.Project, osn, arch)
 		if err != nil {
 			continue
