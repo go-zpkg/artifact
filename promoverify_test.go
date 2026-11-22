@@ -65,7 +65,7 @@ func TestSignatureIsBoundToTheProjectAndVersionInstalled(t *testing.T) {
 			t.Errorf("%s %s: a signature for something else was accepted", tc.project, tc.ver)
 			continue
 		}
-		if !strings.Contains(err.Error(), "different project or version") && !strings.Contains(err.Error(), "no readable") {
+		if !strings.Contains(err.Error(), "name a different project or version") {
 			t.Errorf("%s %s: refusal does not say why: %v", tc.project, tc.ver, err)
 		}
 	}
@@ -256,5 +256,45 @@ func TestSameVersionTagNeverMatchesEmpty(t *testing.T) {
 		if sameVersionTag(tc[0], tc[1]) {
 			t.Errorf("sameVersionTag(%q, %q) = true", tc[0], tc[1])
 		}
+	}
+}
+
+func TestVerifiedPayloadsAreOnlyTheTrustedBoundOnes(t *testing.T) {
+	fr := newFakeRegistry(t, false)
+	defer fr.close()
+	c, _ := NewOCIClient(fr.base("go-zpkg/artifacts"))
+	kp, err := sign.Generate()
+	if err != nil {
+		t.Fatal(err)
+	}
+	stranger, err := sign.Generate()
+	if err != nil {
+		t.Fatal(err)
+	}
+	old := SigningPublicKey
+	SigningPublicKey = kp.PublicKeyString()
+	defer func() { SigningPublicKey = old }()
+	tarball := makeGzTarball("payloads-body")
+	digest := digestOf(tarball)
+
+	pushClaiming(t, c, "vp.pkg", "1.0.0", "pkg:generic/vp.pkg@1.0.0", kp, tarball)
+	// a stranger's signature is attached too: it must not be returned.
+	payload, _ := sign.SimpleSigningPayload("pkg:generic/vp.pkg@1.0.0", digest)
+	if err := c.AttachReferrer("vp.pkg", "1.0.0", "linux", "x86-64", Referrer{
+		ArtifactType: ArtifactTypeSignature, MediaType: MediaSimpleSigning, Blob: append([]byte(nil), payload...),
+		Annotations: map[string]string{CosignSignatureAnnotation: stranger.SignPayload([]byte("other"))},
+	}); err != nil {
+		t.Fatal(err)
+	}
+	got, err := c.VerifiedPayloads("vp.pkg", "1.0.0", "linux", "x86-64", digest)
+	if err != nil || len(got) != 1 {
+		t.Fatalf("VerifiedPayloads = %d payloads, %v; want exactly the trusted one", len(got), err)
+	}
+	if _, err := c.VerifiedPayloads("vp.pkg", "1.0.0", "linux", "x86-64", "sha256:00"); err == nil {
+		t.Error("payloads returned for a digest nothing signed")
+	}
+	pushClaiming(t, c, "vp.other", "1.0.0", "pkg:generic/vp.pkg@1.0.0", kp, tarball)
+	if got, err := c.VerifiedPayloads("vp.other", "1.0.0", "linux", "x86-64", digest); err == nil || len(got) != 0 {
+		t.Errorf("payloads returned for a claim about another project: %d, %v", len(got), err)
 	}
 }

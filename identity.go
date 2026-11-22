@@ -55,11 +55,8 @@ func claimedIdentity(payload []byte) (project, version string, ok bool) {
 // A missing, unreadable or different claim is an error: fail closed.
 func (id Identity) claimedBy(payload []byte) error {
 	project, version, ok := claimedIdentity(payload)
-	if !ok {
-		return errors.New("artifact: signature carries no readable project/version claim")
-	}
-	if !strings.EqualFold(project, id.Project) || !sameVersionTag(version, id.Version) {
-		return errors.New("artifact: signature is for a different project or version")
+	if !ok || !strings.EqualFold(project, id.Project) || !sameVersionTag(version, id.Version) {
+		return errors.New("artifact: signature does not name this project and version")
 	}
 	return nil
 }

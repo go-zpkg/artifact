@@ -613,6 +613,55 @@ func (c *OCIClient) SignaturesOfDigest(project, ver, osn, arch, digest string) (
 		Revoked: revoked, Threshold: trust.Threshold}, nil
 }
 
+// VerifiedPayloads returns the signed simple-signing payloads that vouch for
+// this artifact: made by a trusted, unrevoked key, over exactly this digest,
+// and naming this project and version. It is an error unless the trust
+// threshold is met, so a caller holding the result may read the signed claims
+// in it as authenticated.
+//
+// It is what lets a caller bind a fact stored OUTSIDE the signature (a
+// provenance referrer, say) to the signature: the signed payload can name that
+// fact's digest, and nothing a registry serves unsigned can.
+func (c *OCIClient) VerifiedPayloads(project, ver, osn, arch, digest string) ([][]byte, error) {
+	trust, err := LoadTrustSet()
+	if err != nil {
+		return nil, err
+	}
+	ctx := context.Background()
+	repo, err := c.repository(project)
+	if err != nil {
+		return nil, err
+	}
+	desc, _, err := c.resolvePlatform(ctx, repo, project, ver, osn, arch)
+	if err != nil {
+		return nil, err
+	}
+	atts, malformed, err := c.attestations(ctx, repo, project, desc)
+	if err != nil {
+		return nil, err
+	}
+	want := &Identity{Project: project, Version: ver}
+	names, untrusted, misbound, revoked, err := trust.countBound(digest, want, atts)
+	if err != nil {
+		return nil, fmt.Errorf("artifact: %s v%s (%s/%s): %w", project, ver, osn, arch, err)
+	}
+	rep := SignatureReport{Signers: names, Untrusted: untrusted, Misbound: misbound, Malformed: malformed,
+		Revoked: revoked, Threshold: trust.Threshold}
+	if verr := rep.Err(); verr != nil {
+		return nil, fmt.Errorf("artifact: %s v%s (%s/%s): %w", project, ver, osn, arch, verr)
+	}
+	var out [][]byte
+	for _, a := range atts {
+		if _, gone := trust.revokedBy(digest, a); gone {
+			continue
+		}
+		if _, ok := trust.verifyOne(digest, a); ok && want.claimedBy(a.Payload) == nil {
+			out = append(out, a.Payload)
+		}
+	}
+	return out, nil
+}
+
 // SignaturesOfTag reports who signed the artifact published under one tag,
 // WITHOUT downloading the tarball: the digest the signature commits to is the
 // per-platform manifest's layer digest, which the manifest already carries.
