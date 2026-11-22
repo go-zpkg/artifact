@@ -38,6 +38,25 @@ func TestVerifiedPayloadsRefusalsNameTheirCause(t *testing.T) {
 			t.Errorf("err = %v; want a project-name refusal", err)
 		}
 	})
+	t.Run("a flood of signature referrers", func(t *testing.T) {
+		stranger, err := sign.Generate()
+		if err != nil {
+			t.Fatal(err)
+		}
+		for i := 0; i < MaxSignatures; i++ {
+			body := []byte(strings.Repeat("x", i+1))
+			if err := c.AttachReferrer("vr.pkg", "1.0.0", "linux", "x86-64", Referrer{
+				ArtifactType: ArtifactTypeSignature, MediaType: MediaSimpleSigning, Blob: body,
+				Annotations: map[string]string{CosignSignatureAnnotation: stranger.SignPayload(body)},
+			}); err != nil {
+				t.Fatal(err)
+			}
+		}
+		_, err = c.VerifiedPayloads("vr.pkg", "1.0.0", "linux", "x86-64", digest)
+		if err == nil || !strings.Contains(err.Error(), "refusing") {
+			t.Errorf("err = %v; want the flood refused by name", err)
+		}
+	})
 	t.Run("a tag nothing published", func(t *testing.T) {
 		_, err := c.VerifiedPayloads("vr.pkg", "9.9.9", "linux", "x86-64", digest)
 		if err == nil || strings.Contains(err.Error(), "signature") {

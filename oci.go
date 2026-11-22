@@ -636,13 +636,12 @@ func (c *OCIClient) VerifiedPayloads(project, ver, osn, arch, digest string) ([]
 	if err != nil {
 		return nil, err
 	}
-	atts, malformed, err := c.attestations(ctx, repo, project, desc)
-	if err != nil {
-		return nil, err
-	}
+	// A failed fetch leaves atts nil, which countBound counts as nothing; the
+	// one check below reports whichever of the two went wrong.
+	atts, malformed, aerr := c.attestations(ctx, repo, project, desc)
 	want := &Identity{Project: project, Version: ver}
-	names, untrusted, misbound, revoked, err := trust.countBound(digest, want, atts)
-	if err != nil {
+	names, untrusted, misbound, revoked, cerr := trust.countBound(digest, want, atts)
+	if err := errors.Join(aerr, cerr); err != nil {
 		return nil, fmt.Errorf("artifact: %s v%s (%s/%s): %w", project, ver, osn, arch, err)
 	}
 	rep := SignatureReport{Signers: names, Untrusted: untrusted, Misbound: misbound, Malformed: malformed,
