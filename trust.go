@@ -434,11 +434,19 @@ func (t TrustSet) Count(digest string, atts []Attestation) (names []string, untr
 // count is Count plus the revoked keys it found, which SignatureReport needs
 // and which Count's two-number signature has no room for.
 func (t TrustSet) count(digest string, atts []Attestation) (names []string, untrusted int, revoked []RevokedKey, err error) {
+	names, untrusted, _, revoked, err = t.countBound(digest, nil, atts)
+	return names, untrusted, revoked, err
+}
+
+// countBound is count plus the identity check: with want non-nil, a signature
+// by a trusted key whose signed claim does not name want is NOT counted and is
+// reported in misbound instead (see Identity).
+func (t TrustSet) countBound(digest string, want *Identity, atts []Attestation) (names []string, untrusted, misbound int, revoked []RevokedKey, err error) {
 	if len(t.Signers) == 0 && len(t.Revoked) == 0 {
-		return nil, 0, nil, errors.New("the trust set is empty, so nothing can be verified")
+		return nil, 0, 0, nil, errors.New("the trust set is empty, so nothing can be verified")
 	}
 	if len(atts) > MaxSignatures {
-		return nil, 0, nil, fmt.Errorf("%d signatures attached, more than the %d this will examine: refusing", len(atts), MaxSignatures)
+		return nil, 0, 0, nil, fmt.Errorf("%d signatures attached, more than the %d this will examine: refusing", len(atts), MaxSignatures)
 	}
 	counted := map[string]bool{}
 	seenRevoked := map[string]bool{}
@@ -460,6 +468,12 @@ func (t TrustSet) count(digest string, atts []Attestation) (names []string, untr
 			untrusted++
 			continue
 		}
+		if want != nil {
+			if err := want.claimedBy(a.Payload); err != nil {
+				misbound++
+				continue
+			}
+		}
 		if counted[s.KeyID()] {
 			continue
 		}
@@ -467,7 +481,7 @@ func (t TrustSet) count(digest string, atts []Attestation) (names []string, untr
 		names = append(names, s.Name)
 	}
 	sort.Strings(names)
-	return names, untrusted, revoked, nil
+	return names, untrusted, misbound, revoked, nil
 }
 
 // SignatureReport is what a registry had to say about who signed one artifact:
@@ -483,6 +497,10 @@ type SignatureReport struct {
 	// artefact; if a stranger's signature invalidated an artifact, invalidating
 	// any artifact would cost one push.
 	Untrusted int
+	// Misbound counts signatures by TRUSTED keys over the right bytes whose
+	// signed claim names another project or version than the one asked for.
+	// They never count toward the threshold.
+	Misbound int
 	// Malformed counts signature referrers that could not be read at all.
 	// Counted rather than skipped: "unsigned" and "signed, but the referrer
 	// is broken" are different facts, and the second names a publishing bug.
@@ -503,7 +521,7 @@ type SignatureReport struct {
 
 // Signed reports whether anything at all was attached.
 func (r SignatureReport) Signed() bool {
-	return len(r.Signers) > 0 || r.Untrusted > 0 || r.Malformed > 0 || len(r.Revoked) > 0
+	return len(r.Signers) > 0 || r.Untrusted > 0 || r.Misbound > 0 || r.Malformed > 0 || len(r.Revoked) > 0
 }
 
 // OK reports whether the threshold was met.
@@ -524,7 +542,11 @@ func (r SignatureReport) Err() error {
 	if !r.Signed() {
 		return errors.New("unsigned (no signature referrer)")
 	}
-	return shortOfThreshold(r.Signers, r.Untrusted, r.Malformed, r.want(), r.Revoked)
+	err := shortOfThreshold(r.Signers, r.Untrusted, r.Malformed, r.want(), r.Revoked)
+	if r.Misbound > 0 {
+		return fmt.Errorf("%w; %d signature(s) by trusted keys name a different project or version than the one requested", err, r.Misbound)
+	}
+	return err
 }
 
 // RevokedNote is the line a command prints when an artifact carries one of our

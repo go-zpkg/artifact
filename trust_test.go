@@ -481,7 +481,7 @@ func pushTwoSigned(t *testing.T, c *OCIClient, project string, tarball []byte, k
 		{ArtifactType: "application/vnd.cyclonedx+json", MediaType: "application/vnd.cyclonedx+json", Blob: []byte(`{}`)},
 	}
 	for _, kp := range kps {
-		payload, err := sign.SimpleSigningPayload("pkg:pkgx/"+project, digestOf(tarball))
+		payload, err := sign.SimpleSigningPayload("pkg:pkgx/"+project+"@1.0.0", digestOf(tarball))
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -653,7 +653,7 @@ func TestProvenanceNamesWhatBuiltTheArtifact(t *testing.T) {
 	tarball := makeGzTarball("provenanced")
 
 	const builder = "https://github.com/go-zpkg/zbk@v0.64.0"
-	payload, err := sign.SimpleSigningPayload("pkg:pkgx/prov.pkg", digestOf(tarball))
+	payload, err := sign.SimpleSigningPayload("pkg:pkgx/prov.pkg@1.0.0", digestOf(tarball))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -785,7 +785,7 @@ func TestAttachASecondSignatureToAPublishedArtifact(t *testing.T) {
 		t.Fatalf("published digest %s is not the rebuild's %s", published, digestOf(tarball))
 	}
 
-	payload, err := sign.SimpleSigningPayload("pkg:pkgx/rebuilt.pkg", published)
+	payload, err := sign.SimpleSigningPayload("pkg:pkgx/rebuilt.pkg@1.0.0", published)
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -204,7 +204,12 @@ func newOCIClientEnv(base string, getenv func(string) string) (*OCIClient, error
 		Cache:  auth.NewCache(),
 	}
 	if cred != (auth.Credential{}) {
-		ac.Credential = func(_ context.Context, _ string) (auth.Credential, error) { return cred, nil }
+		ac.Credential = func(_ context.Context, hostport string) (auth.Credential, error) {
+			if !credentialsMayGoTo(host, hostport, plainHTTP) {
+				return auth.EmptyCredential, nil
+			}
+			return cred, nil
+		}
 	}
 	return &OCIClient{
 		host:      host,
@@ -212,6 +217,20 @@ func newOCIClientEnv(base string, getenv func(string) string) (*OCIClient, error
 		plainHTTP: plainHTTP,
 		client:    ac,
 	}, nil
+}
+
+// credentialsMayGoTo decides whether the configured registry credentials may be
+// offered to requestHost.
+//
+// ⛔ A CREDENTIAL BELONGS TO THE HOST IT WAS CONFIGURED FOR. It is answered
+// only to that exact host (a redirect, a token realm or a mirror that answers
+// 401 elsewhere gets nothing), and never over plain HTTP — except to a true
+// loopback address, whose traffic does not leave the machine.
+func credentialsMayGoTo(configured, requestHost string, plainHTTP bool) bool {
+	if !strings.EqualFold(configured, requestHost) {
+		return false
+	}
+	return !plainHTTP || isLoopback(configured)
 }
 
 // isLoopback reports whether host (possibly host:port) is a loopback address,
@@ -586,12 +605,60 @@ func (c *OCIClient) SignaturesOfDigest(project, ver, osn, arch, digest string) (
 	if err != nil {
 		return SignatureReport{}, err
 	}
-	names, untrusted, revoked, err := trust.count(digest, atts)
+	names, untrusted, misbound, revoked, err := trust.countBound(digest, &Identity{Project: project, Version: ver}, atts)
 	if err != nil {
 		return SignatureReport{}, fmt.Errorf("artifact: %s v%s (%s/%s): %w", project, ver, osn, arch, err)
 	}
-	return SignatureReport{Signers: names, Untrusted: untrusted, Malformed: malformed,
+	return SignatureReport{Signers: names, Untrusted: untrusted, Misbound: misbound, Malformed: malformed,
 		Revoked: revoked, Threshold: trust.Threshold}, nil
+}
+
+// VerifiedPayloads returns the signed simple-signing payloads that vouch for
+// this artifact: made by a trusted, unrevoked key, over exactly this digest,
+// and naming this project and version. It is an error unless the trust
+// threshold is met, so a caller holding the result may read the signed claims
+// in it as authenticated.
+//
+// It is what lets a caller bind a fact stored OUTSIDE the signature (a
+// provenance referrer, say) to the signature: the signed payload can name that
+// fact's digest, and nothing a registry serves unsigned can.
+func (c *OCIClient) VerifiedPayloads(project, ver, osn, arch, digest string) ([][]byte, error) {
+	trust, err := LoadTrustSet()
+	if err != nil {
+		return nil, err
+	}
+	ctx := context.Background()
+	repo, err := c.repository(project)
+	if err != nil {
+		return nil, err
+	}
+	desc, _, err := c.resolvePlatform(ctx, repo, project, ver, osn, arch)
+	if err != nil {
+		return nil, err
+	}
+	// A failed fetch leaves atts nil, which countBound counts as nothing; the
+	// one check below reports whichever of the two went wrong.
+	atts, malformed, aerr := c.attestations(ctx, repo, project, desc)
+	want := &Identity{Project: project, Version: ver}
+	names, untrusted, misbound, revoked, cerr := trust.countBound(digest, want, atts)
+	if err := errors.Join(aerr, cerr); err != nil {
+		return nil, fmt.Errorf("artifact: %s v%s (%s/%s): %w", project, ver, osn, arch, err)
+	}
+	rep := SignatureReport{Signers: names, Untrusted: untrusted, Misbound: misbound, Malformed: malformed,
+		Revoked: revoked, Threshold: trust.Threshold}
+	if verr := rep.Err(); verr != nil {
+		return nil, fmt.Errorf("artifact: %s v%s (%s/%s): %w", project, ver, osn, arch, verr)
+	}
+	var out [][]byte
+	for _, a := range atts {
+		if _, gone := trust.revokedBy(digest, a); gone {
+			continue
+		}
+		if _, ok := trust.verifyOne(digest, a); ok && want.claimedBy(a.Payload) == nil {
+			out = append(out, a.Payload)
+		}
+	}
+	return out, nil
 }
 
 // SignaturesOfTag reports who signed the artifact published under one tag,
@@ -646,11 +713,11 @@ func (c *OCIClient) ProvenanceOfTag(project, tag, osn, arch string) (SignatureRe
 	if err != nil {
 		return SignatureReport{}, "", err
 	}
-	names, untrusted, revoked, err := trust.count(man.Layers[0].Digest.String(), atts)
+	names, untrusted, misbound, revoked, err := trust.countBound(man.Layers[0].Digest.String(), &Identity{Project: project, Version: tag}, atts)
 	if err != nil {
 		return SignatureReport{}, "", fmt.Errorf("artifact: %s %s (%s/%s): %w", project, tag, osn, arch, err)
 	}
-	rep := SignatureReport{Signers: names, Untrusted: untrusted, Malformed: malformed,
+	rep := SignatureReport{Signers: names, Untrusted: untrusted, Misbound: misbound, Malformed: malformed,
 		Revoked: revoked, Threshold: trust.Threshold}
 	return rep, c.builderFrom(ctx, repo, refs), nil
 }
