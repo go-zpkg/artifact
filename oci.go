@@ -196,8 +196,15 @@ func newOCIClientEnv(base string, getenv func(string) string) (*OCIClient, error
 	switch {
 	case tok != "":
 		cred.AccessToken = tok
-	case user != "" || pass != "":
+	case user != "" && pass != "":
 		cred.Username, cred.Password = user, pass
+	case user != "":
+		// ⛔ A half credential is not a credential: Basic auth with an empty
+		// password is REFUSED (403) by registries that would answer an
+		// anonymous pull on a public repository.
+		warn("OCI_USERNAME is set but OCI_PASSWORD is not: ignoring both, pulling anonymously")
+	case pass != "":
+		warn("OCI_PASSWORD is set but OCI_USERNAME is not: ignoring both, pulling anonymously")
 	}
 	ac := &auth.Client{
 		Client: HTTPClient,

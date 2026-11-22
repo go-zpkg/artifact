@@ -435,8 +435,8 @@ func TestNewOCIClientParsing(t *testing.T) {
 	if got := c.repoName("OpenSSL.org"); got != "go-zpkg/artifacts/openssl.org" {
 		t.Errorf("repoName() = %q", got)
 	}
-	if _, err := NewOCIClient("https://not-oci"); err == nil {
-		t.Error("want error for non-oci base")
+	if _, err := NewOCIClient("https://not-oci"); err == nil || !strings.Contains(err.Error(), "not an oci:// ref") {
+		t.Errorf("want 'not an oci:// ref' error for non-oci base, got %v", err)
 	}
 	if _, err := newOCIClientEnv("oci://hostonly", func(string) string { return "" }); err == nil {
 		t.Error("want error for missing repo path")
@@ -457,6 +457,56 @@ func TestNewOCIClientParsing(t *testing.T) {
 		return ""
 	}); err != nil {
 		t.Fatal(err)
+	}
+}
+
+func TestOCIHalfCredentialIsAnonymous(t *testing.T) {
+	cases := []struct {
+		name     string
+		env      map[string]string
+		wantCred bool
+		wantWarn string
+	}{
+		{name: "user only", env: map[string]string{"OCI_USERNAME": "someuser"}, wantWarn: "OCI_PASSWORD is not"},
+		{name: "pass only", env: map[string]string{"OCI_PASSWORD": "s3cret"}, wantWarn: "OCI_USERNAME is not"},
+		{name: "both", env: map[string]string{"OCI_USERNAME": "u", "OCI_PASSWORD": "p"}, wantCred: true},
+		{name: "token wins over half", env: map[string]string{"OCI_TOKEN": "tok", "OCI_USERNAME": "u"}, wantCred: true},
+		{name: "none", env: map[string]string{}},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			var warned []string
+			old := Warn
+			Warn = func(m string) { warned = append(warned, m) }
+			defer func() { Warn = old }()
+			c, err := newOCIClientEnv("oci://ghcr.io/x/y", func(k string) string { return tc.env[k] })
+			if err != nil {
+				t.Fatal(err)
+			}
+			if got := c.client.Credential != nil; got != tc.wantCred {
+				t.Fatalf("credential configured = %v, want %v", got, tc.wantCred)
+			}
+			if tc.wantCred {
+				cr, _ := c.client.Credential(context.Background(), "ghcr.io")
+				if cr.AccessToken == "" && (cr.Username != tc.env["OCI_USERNAME"] || cr.Password != tc.env["OCI_PASSWORD"]) {
+					t.Errorf("wrong credential %+v", cr)
+				}
+			}
+			if tc.wantWarn == "" {
+				if len(warned) != 0 {
+					t.Errorf("unexpected warning %q", warned)
+				}
+				return
+			}
+			if len(warned) != 1 || !strings.Contains(warned[0], tc.wantWarn) {
+				t.Fatalf("warnings = %q, want one containing %q", warned, tc.wantWarn)
+			}
+			for _, v := range tc.env {
+				if strings.Contains(warned[0], v) {
+					t.Errorf("warning leaks a value: %q", warned[0])
+				}
+			}
+		})
 	}
 }
 
