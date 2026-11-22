@@ -55,7 +55,7 @@ func TestACatalogueIsVerifiedLikeAnyOtherArtifact(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	payload, err := sign.SimpleSigningPayload("pkg:pkgx/"+CatalogProjectName, digestOf(tgz))
+	payload, err := sign.SimpleSigningPayload("pkg:pkgx/"+CatalogProjectName+"@v1", digestOf(tgz))
 	if err != nil {
 		t.Fatal(err)
 	}

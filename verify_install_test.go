@@ -18,7 +18,7 @@ func pushSignedArtifact(t *testing.T, c *OCIClient, project string, kp *sign.Key
 		{ArtifactType: "application/vnd.cyclonedx+json", MediaType: "application/vnd.cyclonedx+json", Blob: []byte(`{}`)},
 	}
 	if withSig {
-		payload, err := sign.SimpleSigningPayload("pkg:pkgx/"+project, digestOf(tarball))
+		payload, err := sign.SimpleSigningPayload("pkg:pkgx/"+project+"@1.0.0", digestOf(tarball))
 		if err != nil {
 			t.Fatal(err)
 		}

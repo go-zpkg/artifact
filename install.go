@@ -271,12 +271,15 @@ func StubBinsStaged(closure []Resolved, s Stage) (int, error) {
 			continue
 		}
 		for _, name := range BinNamesFor(r.Project, provides, r.Version.Raw) {
+			if !safeStubName(name) {
+				return n, fmt.Errorf("artifact: %s provides a binary named %q, which is not a safe command name; refusing to write a stub for it", r.Project, name)
+			}
 			real := filepath.Join(pkgPrefix, "bin", name)
 			if _, err := os.Stat(real); err != nil {
 				continue
 			}
 			stub := fmt.Sprintf("#!/bin/sh\nexport LD_LIBRARY_PATH=\"%s${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}\"\nexec \"%s\" \"$@\"\n",
-				libPath, filepath.Join(guestPrefix, "bin", name))
+				shDQ(libPath), shDQ(filepath.Join(guestPrefix, "bin", name)))
 			dst := filepath.Join(binDir, name)
 			_ = os.Remove(dst)
 			if err := os.WriteFile(dst, []byte(stub), 0o755); err != nil {
@@ -286,6 +289,29 @@ func StubBinsStaged(closure []Resolved, s Stage) (int, error) {
 		}
 	}
 	return n, nil
+}
+
+// safeStubName reports whether a binary name may be written as a stub: a
+// plain command name, so that it can never be anything but one word.
+func safeStubName(name string) bool {
+	if name == "" || name == "." || name == ".." || name[0] == '-' {
+		return false
+	}
+	for _, r := range name {
+		switch {
+		case r >= 'a' && r <= 'z', r >= 'A' && r <= 'Z', r >= '0' && r <= '9':
+		case r == '.', r == '_', r == '+', r == '-', r == '@':
+		default:
+			return false
+		}
+	}
+	return true
+}
+
+// shDQ escapes s for the inside of a double-quoted sh string, so a path holding
+// a quote, a dollar sign, a backtick or a backslash stays data.
+func shDQ(s string) string {
+	return strings.NewReplacer("\\", "\\\\", "\"", "\\\"", "$", "\\$", "`", "\\`").Replace(s)
 }
 
 // LibDirs returns every library directory in an installed closure (including

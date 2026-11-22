@@ -204,7 +204,12 @@ func newOCIClientEnv(base string, getenv func(string) string) (*OCIClient, error
 		Cache:  auth.NewCache(),
 	}
 	if cred != (auth.Credential{}) {
-		ac.Credential = func(_ context.Context, _ string) (auth.Credential, error) { return cred, nil }
+		ac.Credential = func(_ context.Context, hostport string) (auth.Credential, error) {
+			if !credentialsMayGoTo(host, hostport, plainHTTP) {
+				return auth.EmptyCredential, nil
+			}
+			return cred, nil
+		}
 	}
 	return &OCIClient{
 		host:      host,
@@ -212,6 +217,20 @@ func newOCIClientEnv(base string, getenv func(string) string) (*OCIClient, error
 		plainHTTP: plainHTTP,
 		client:    ac,
 	}, nil
+}
+
+// credentialsMayGoTo decides whether the configured registry credentials may be
+// offered to requestHost.
+//
+// ⛔ A CREDENTIAL BELONGS TO THE HOST IT WAS CONFIGURED FOR. It is answered
+// only to that exact host (a redirect, a token realm or a mirror that answers
+// 401 elsewhere gets nothing), and never over plain HTTP — except to a true
+// loopback address, whose traffic does not leave the machine.
+func credentialsMayGoTo(configured, requestHost string, plainHTTP bool) bool {
+	if !strings.EqualFold(configured, requestHost) {
+		return false
+	}
+	return !plainHTTP || isLoopback(configured)
 }
 
 // isLoopback reports whether host (possibly host:port) is a loopback address,
@@ -586,11 +605,11 @@ func (c *OCIClient) SignaturesOfDigest(project, ver, osn, arch, digest string) (
 	if err != nil {
 		return SignatureReport{}, err
 	}
-	names, untrusted, revoked, err := trust.count(digest, atts)
+	names, untrusted, misbound, revoked, err := trust.countBound(digest, &Identity{Project: project, Version: ver}, atts)
 	if err != nil {
 		return SignatureReport{}, fmt.Errorf("artifact: %s v%s (%s/%s): %w", project, ver, osn, arch, err)
 	}
-	return SignatureReport{Signers: names, Untrusted: untrusted, Malformed: malformed,
+	return SignatureReport{Signers: names, Untrusted: untrusted, Misbound: misbound, Malformed: malformed,
 		Revoked: revoked, Threshold: trust.Threshold}, nil
 }
 
@@ -646,11 +665,11 @@ func (c *OCIClient) ProvenanceOfTag(project, tag, osn, arch string) (SignatureRe
 	if err != nil {
 		return SignatureReport{}, "", err
 	}
-	names, untrusted, revoked, err := trust.count(man.Layers[0].Digest.String(), atts)
+	names, untrusted, misbound, revoked, err := trust.countBound(man.Layers[0].Digest.String(), &Identity{Project: project, Version: tag}, atts)
 	if err != nil {
 		return SignatureReport{}, "", fmt.Errorf("artifact: %s %s (%s/%s): %w", project, tag, osn, arch, err)
 	}
-	rep := SignatureReport{Signers: names, Untrusted: untrusted, Malformed: malformed,
+	rep := SignatureReport{Signers: names, Untrusted: untrusted, Misbound: misbound, Malformed: malformed,
 		Revoked: revoked, Threshold: trust.Threshold}
 	return rep, c.builderFrom(ctx, repo, refs), nil
 }
