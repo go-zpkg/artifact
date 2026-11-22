@@ -271,15 +271,14 @@ func StubBinsStaged(closure []Resolved, s Stage) (int, error) {
 			continue
 		}
 		for _, name := range BinNamesFor(r.Project, provides, r.Version.Raw) {
-			if !safeStubName(name) {
-				return n, fmt.Errorf("artifact: %s provides a binary named %q, which is not a safe command name; refusing to write a stub for it", r.Project, name)
+			if why := stubNameProblem(name); why != "" {
+				return n, fmt.Errorf("artifact: %s provides a binary named %q, which is not a safe command name (%s); refusing to write a stub for it", r.Project, name, why)
 			}
 			real := filepath.Join(pkgPrefix, "bin", name)
 			if _, err := os.Stat(real); err != nil {
 				continue
 			}
-			stub := fmt.Sprintf("#!/bin/sh\nexport LD_LIBRARY_PATH=\"%s${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}\"\nexec \"%s\" \"$@\"\n",
-				shDQ(libPath), shDQ(filepath.Join(guestPrefix, "bin", name)))
+			stub := stubScript(libPath, guestPrefix, name)
 			dst := filepath.Join(binDir, name)
 			_ = os.Remove(dst)
 			if err := os.WriteFile(dst, []byte(stub), 0o755); err != nil {
@@ -291,21 +290,52 @@ func StubBinsStaged(closure []Resolved, s Stage) (int, error) {
 	return n, nil
 }
 
-// safeStubName reports whether a binary name may be written as a stub: a
-// plain command name, so that it can never be anything but one word.
-func safeStubName(name string) bool {
-	if name == "" || name == "." || name == ".." || name[0] == '-' {
-		return false
+// stubNameProblem says why a binary name cannot be written as a stub, or ""
+// when it can. It refuses only what is unsafe for the way the name is USED,
+// because the names a real package provides include `[`, `[[`, `g++`, `2to3`,
+// `x86_64-linux-gnu-gcc`, `python3.13` and names with `:` or `@`, and a list of
+// permitted characters refused the first of them and stopped a rootfs build.
+//
+// The name reaches two places, and nowhere else:
+//
+//   - the stub's FILE NAME, filepath.Join(<prefix>/bin, name). Here it must be
+//     exactly one path element: "" would name the directory itself, "." and
+//     ".." would write over or outside it, a "/" would descend into or leave
+//     the directory (a name like "../x" lands outside <prefix>/bin), and a NUL
+//     ends the C string the kernel sees, so the file would get another name
+//     than the one that was checked.
+//   - the script BODY, `exec "<guestPrefix>/bin/<name>" "$@"`, always inside
+//     double quotes and always through shDQ, which escapes the only four
+//     characters special there (backslash, double quote, dollar, backtick).
+//     So a quote, `$(...)`, a backtick, `;`, a space, a newline or any other
+//     control character stays data, and is not refused. The word begins with
+//     the guest prefix, an absolute path, so a leading "-" is never read as an
+//     option either.
+//
+// Nothing else is refused: a stricter rule only turns a package that works
+// into a failed build.
+func stubNameProblem(name string) string {
+	switch {
+	case name == "":
+		return "it is empty, so it would name the bin directory itself"
+	case name == "." || name == "..":
+		return "it is a directory reference, not a file name"
+	case strings.Contains(name, "/"):
+		return "it holds a path separator, so the stub would land outside <prefix>/bin"
+	case strings.ContainsRune(name, 0):
+		return "it holds a NUL, which ends the file name early"
 	}
-	for _, r := range name {
-		switch {
-		case r >= 'a' && r <= 'z', r >= 'A' && r <= 'Z', r >= '0' && r <= '9':
-		case r == '.', r == '_', r == '+', r == '-', r == '@':
-		default:
-			return false
-		}
-	}
-	return true
+	return ""
+}
+
+// safeStubName reports whether a binary name may be written as a stub.
+func safeStubName(name string) bool { return stubNameProblem(name) == "" }
+
+// stubScript is the text of the stub for the binary `name`: every value that is
+// not a literal of this template goes through shDQ.
+func stubScript(libPath, guestPrefix, name string) string {
+	return fmt.Sprintf("#!/bin/sh\nexport LD_LIBRARY_PATH=\"%s${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}\"\nexec \"%s\" \"$@\"\n",
+		shDQ(libPath), shDQ(filepath.Join(guestPrefix, "bin", name)))
 }
 
 // shDQ escapes s for the inside of a double-quoted sh string, so a path holding

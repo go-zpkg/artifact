@@ -195,19 +195,6 @@ func TestCredentialsGoOnlyToTheirHost(t *testing.T) {
 	}
 }
 
-func TestSafeStubName(t *testing.T) {
-	for _, n := range []string{"bash", "g++", "python3.12", "apu-1-config", "x_y", "a@b"} {
-		if !safeStubName(n) {
-			t.Errorf("%q refused", n)
-		}
-	}
-	for _, n := range []string{"", ".", "..", "-rf", `a"b`, "a$(id)", "a`id`", "a b", "a;b", "a\nb", "a'b", "a\\b", "a*", "é"} {
-		if safeStubName(n) {
-			t.Errorf("%q accepted", n)
-		}
-	}
-}
-
 func TestShDQ(t *testing.T) {
 	if got, want := shDQ("a\"b$c`d\\e"), "a\\\"b\\$c\\`d\\\\e"; got != want {
 		t.Errorf("shDQ = %q, want %q", got, want)
@@ -220,7 +207,7 @@ func TestStubBinsRefusesAnUnsafeName(t *testing.T) {
 	defer fakeServer(t, map[string]fakePkg{
 		"evil.org/tool": {
 			versions: []string{"1.0.0"},
-			yaml:     "provides:\n  - bin/a\"$(touch pwned)\n",
+			yaml:     "provides:\n  - bin/..\n",
 			files:    map[string]string{"bin/ok": "#!x\n"},
 		},
 	})()

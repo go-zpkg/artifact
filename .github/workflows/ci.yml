@@ -306,3 +306,26 @@ jobs:
         with:
           usesh: true
           run: .github/scripts/bsd-tests.sh run
+
+  # THE REAL-DATA GATE for the stub rule. The rule that shipped in v0.92.0 was
+  # written from the names its author thought of and refused coreutils' `[`,
+  # which stopped a rootfs build (go-zpkg/packages#440). This feeds every
+  # `provides` entry of go-zpkg/recipes main into the rule and requires all of
+  # them to be accepted; the test itself refuses to pass over an empty checkout.
+  recipes-names:
+    name: every recipe's provides is stubbable
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/checkout@v7
+        with:
+          repository: go-zpkg/recipes
+          ref: main
+          path: recipes
+      - uses: actions/setup-go@v7
+        with:
+          go-version: '1.27.4'
+      - name: test
+        env:
+          ZPKG_RECIPES_DIR: ${{ github.workspace }}/recipes
+        run: go test -count=1 -v -run 'TestEveryRecipeProvidesNameIsStubbable' .
