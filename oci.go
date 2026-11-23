@@ -29,6 +29,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"net/http"
 	"sort"
 	"strings"
 	"time"
@@ -217,6 +218,13 @@ func newOCIClientEnv(base string, getenv func(string) string) (*OCIClient, error
 			}
 			return cred, nil
 		}
+		// The callback above is asked about the REGISTRY host, and the
+		// client then spends what it returns wherever the registry's
+		// challenge points (a token endpoint on any host). So the
+		// guarantee is enforced on the wire as well.
+		hc := *HTTPClient
+		hc.Transport = &credentialGuard{base: hc.Transport, host: host}
+		ac.Client = &hc
 	}
 	return &OCIClient{
 		host:      host,
@@ -238,6 +246,30 @@ func credentialsMayGoTo(configured, requestHost string, plainHTTP bool) bool {
 		return false
 	}
 	return !plainHTTP || isLoopback(configured)
+}
+
+// credentialGuard refuses to send a request that carries credentials, or a
+// token-request body, to any host other than the configured registry. It is the
+// wire-level half of credentialsMayGoTo: a token endpoint named by a registry's
+// challenge is another host, and the credential must not follow the challenge.
+type credentialGuard struct {
+	base http.RoundTripper
+	host string
+}
+
+func (g *credentialGuard) RoundTrip(req *http.Request) (*http.Response, error) {
+	if !strings.EqualFold(req.URL.Host, g.host) &&
+		(req.Header.Get("Authorization") != "" || (req.Method == http.MethodPost && req.Body != nil && req.Body != http.NoBody)) {
+		if req.Body != nil {
+			req.Body.Close()
+		}
+		return nil, fmt.Errorf("refusing to send registry credentials to %s: they belong to %s only", req.URL.Host, g.host)
+	}
+	base := g.base
+	if base == nil {
+		base = http.DefaultTransport
+	}
+	return base.RoundTrip(req)
 }
 
 // isLoopback reports whether host (possibly host:port) is a loopback address,
