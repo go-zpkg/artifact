@@ -474,6 +474,20 @@ func TestTheSonamesGen1Named(t *testing.T) {
 	}
 }
 
+// Every library the ncurses recipe installs resolves to ncurses. libformw.so.6
+// was NEEDED in every sovereign build of go-zpkg/packages and warned
+// "no pkgx project is mapped to that soname" twice per run.
+func TestEveryNcursesLibraryIsMapped(t *testing.T) {
+	for _, stem := range []string{"ncurses", "tinfo", "panel", "form", "menu", "ncurses++"} {
+		for _, name := range []string{stem, stem + "w"} {
+			soname := "lib" + name + ".so.6"
+			if got := projectForSoname(soname); got != "invisible-island.net/ncurses" {
+				t.Errorf("projectForSoname(%q) = %q, want invisible-island.net/ncurses", soname, got)
+			}
+		}
+	}
+}
+
 // The toolchain's OTHER C++ runtime. bk's sovereign driver flags link libc++,
 // not libstdc++, and the second sovereign generation showed what happens when
 // nothing supplies it at install time:

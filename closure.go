@@ -97,6 +97,16 @@ var sonameProject = map[string]string{
 	"libtextstyle": "gnu.org/gettext",
 	"libpanel":     "invisible-island.net/ncurses",
 	"libpanelw":    "invisible-island.net/ncurses",
+	// The rest of what the ncurses recipe installs (its package.hcl builds
+	// --enable-widec: libformw, libmenuw, libpanelw, libncurses++w):
+	// libformw.so.6 was NEEDED in every sovereign build and said
+	// "no pkgx project is mapped to that soname", twice per run.
+	"libform":       "invisible-island.net/ncurses",
+	"libformw":      "invisible-island.net/ncurses",
+	"libmenu":       "invisible-island.net/ncurses",
+	"libmenuw":      "invisible-island.net/ncurses",
+	"libncurses++":  "invisible-island.net/ncurses",
+	"libncurses++w": "invisible-island.net/ncurses",
 }
 
 // sonamePrefixProject maps a soname PREFIX to its provider, for libraries that
