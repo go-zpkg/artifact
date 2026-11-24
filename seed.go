@@ -98,10 +98,10 @@ func noteSeed(c *OCIClient, base, project string, v Ver, tag, osn, arch, digest 
 		return nil
 	}
 	rep, err := c.SignaturesOfDigest(project, tag, osn, arch, digest)
-	if err != nil {
-		return err
+	if err == nil {
+		err = rep.Err()
 	}
-	if err := rep.Err(); err != nil {
+	if err != nil {
 		return fmt.Errorf("seed %s v%s: %w", project, v.Raw, err)
 	}
 	seedMu.Lock()
