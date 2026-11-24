@@ -127,6 +127,11 @@ func TestEveryResolutionPathRefusesGoPkgx(t *testing.T) {
 		if err := ValidateDist(); !errors.Is(err, ErrClosedDistRegistry) {
 			t.Errorf("%s: ValidateDist: %v", name, err)
 		}
+		if name == "as the only source" || name == "as the first source" {
+			if c, err := ociClientForDist(); !errors.Is(err, ErrClosedDistRegistry) || c != nil {
+				t.Errorf("%s: ociClientForDist: %v, %v", name, c, err)
+			}
+		}
 	}
 }
 

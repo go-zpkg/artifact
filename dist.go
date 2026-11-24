@@ -114,9 +114,6 @@ func distLabel() string {
 // mergeVers returns the union of two ascending lists, ascending, with one
 // entry per Raw spelling.
 func mergeVers(a, b []Ver) []Ver {
-	if len(a) == 0 {
-		return b
-	}
 	seen := make(map[string]bool, len(a))
 	out := append([]Ver(nil), a...)
 	for _, v := range a {
