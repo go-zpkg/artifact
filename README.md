@@ -67,6 +67,14 @@ ZPKG_DIST="oci://10.0.0.1:5111/run/packages oci://ghcr.io/go-zpkg/packages"
   go-pkgx can be copied to go-zpkg, each one's signature verified. A go-pkgx
   entry in `ZPKG_DIST`, a second source, or another go-pkgx repository stays
   refused.
+- The other is a SEED: `WithSeedSource(from, fn)` runs `fn` with `from` as the
+  single `DistBase` so a toolchain can be staged as the BUILD ENVIRONMENT of
+  one bootstrap pass, and as nothing else. Signature verification must be on
+  (`ErrSeedUnverified` otherwise, and for an HTTP dist), every artifact is
+  checked against the trust set, and each one installed is recorded in
+  `SeedLedger()` (project, version, digest, signers, source) so the caller can
+  put it in the provenance of what it builds. The exception ends when `fn`
+  returns; `CheckDistSource` never learns it and `ZPKG_DIST` clears it.
 
 ## What `Extract` refuses
 

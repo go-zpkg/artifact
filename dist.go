@@ -107,6 +107,9 @@ func distSourceAllowed(s string, isBase bool) error {
 	if isBase && promotionSource != "" && s == promotionSource {
 		return nil
 	}
+	if seedAllowed(s, isBase) {
+		return nil
+	}
 	return CheckDistSource(s)
 }
 
