@@ -50,7 +50,9 @@ func TestANameThatAddressesSomethingPublishedCannotChangeSilently(t *testing.T) 
 			// The org here is a DEPLOYMENT FACT and not our name: GitHub's
 			// container packages are org-scoped and did not follow the
 			// repository transfer, so every artifact is still here.
-			"oci://ghcr.io/go-pkgx/packages",
+			// 2026-11-24: changed on purpose. We no longer publish to
+			// go-pkgx and CheckDistSource refuses it (dist.go).
+			"oci://ghcr.io/go-zpkg/packages",
 		},
 	} {
 		if tc.got != tc.want {

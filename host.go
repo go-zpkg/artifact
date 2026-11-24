@@ -5,13 +5,11 @@
 // scratch` image). It is imported by zpkm, zpkx and zpkb so there is one
 // source of truth.
 //
-// ⛔ THE DEFAULT REGISTRY IS STILL oci://ghcr.io/go-pkgx/packages, and this
-// sentence has been wrong before. DefaultDistBase (zpkg.go:64) is the
-// authority; readmedefault_test.go asserts the README agrees with it, and
-// asserts specifically that it does NOT say go-zpkg/packages — because a
-// rename pass once rewrote the prose here while every artifact stayed where
-// it was. The move to go-zpkg is decided and is a republication, not an edit:
-// the factory run lands first, this constant flips after.
+// ⛔ THE DEFAULT REGISTRY IS oci://ghcr.io/go-zpkg/packages (since 2026-11-24),
+// and this sentence has been wrong before. DefaultDistBase (zpkg.go) is the
+// authority; readmedefault_test.go asserts the README agrees with it and does
+// NOT name go-pkgx/packages as a default. ZPKG_DIST is an ORDERED list of
+// sources (see dist.go); any source under go-pkgx is refused.
 package artifact
 
 import "runtime"

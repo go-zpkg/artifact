@@ -61,7 +61,12 @@ import (
 //
 // — another test had pointed it at an httptest server first. A gate that
 // reads mutable global state tests the order the suite happened to run in.
-const DefaultDistBase = "oci://ghcr.io/go-pkgx/packages"
+//
+// ⛔ 2026-11-24: THE DEFAULT IS go-zpkg NOW, AND go-pkgx IS REFUSED. We no
+// longer publish to go-pkgx (CheckDistSource refuses it, no opt-out); the
+// ⛔⛔ paragraph above records how the rename once pointed at an EMPTY go-zpkg
+// registry, which is why TestTheDefaultRegistryHoldsArtifacts probes it.
+const DefaultDistBase = "oci://ghcr.io/go-zpkg/packages"
 
 var (
 	DistBase   = DefaultDistBase
@@ -159,7 +164,12 @@ var (
 )
 
 // ociClientForDist returns the OCIClient for the current DistBase, cached.
-func ociClientForDist() (*OCIClient, error) { return ociClientFor(DistBase) }
+func ociClientForDist() (*OCIClient, error) {
+	if err := CheckDistSource(DistBase); err != nil {
+		return nil, err
+	}
+	return ociClientFor(DistBase)
+}
 
 // ociCacheClient returns the client for CacheBase, or nil when no cache is
 // configured or it is not an OCI registry. A cache that cannot be reached is
@@ -191,8 +201,11 @@ func ociClientFor(base string) (*OCIClient, error) {
 
 // applyEnv overrides DistBase/PantryBase from ZPKG_DIST/ZPKG_RECIPES (testable).
 func applyEnv(get func(string) string) {
-	if d := get("ZPKG_DIST"); d != "" {
-		DistBase = strings.TrimRight(d, "/")
+	// ZPKG_DIST is an ORDERED list (whitespace or commas): the first source
+	// is DistBase, the rest DistExtra. See dist.go.
+	if list := SplitDistList(get("ZPKG_DIST")); len(list) > 0 {
+		DistBase = list[0]
+		DistExtra = list[1:]
 	}
 	if p := get("ZPKG_RECIPES"); p != "" {
 		PantryBase = strings.TrimRight(p, "/")
@@ -904,6 +917,50 @@ func PublishedTagFor(project string, v Ver, osn, arch string) (string, bool, err
 // caller that must pick an INSTALLABLE version has to check membership itself —
 // see PickVersionFor.
 func versionsForSourced(project, osn, arch string) ([]Ver, bool, error) {
+	srcs, err := distSources()
+	if err != nil {
+		return nil, false, err
+	}
+	if len(srcs) == 1 {
+		return versionsFromPrimary(project, osn, arch)
+	}
+	// An ordered list: the union of every source's listing, each consulted in
+	// order. A source that does not carry the project contributes nothing; any
+	// other failure stops the walk, because a source we could not read is not
+	// one that lacks the package.
+	var all []Ver
+	registry := false
+	for _, s := range srcs {
+		var vs []Ver
+		var err error
+		if IsOCI(s) {
+			vs, err = ociVersionsForSource(s, project)
+		} else {
+			vs, err = httpVersionsFor(s, project, osn, arch)
+		}
+		if err != nil {
+			if repoAbsent(err) || isNotFound(err) {
+				continue
+			}
+			return nil, false, fmt.Errorf("dist source %s: %w", s, err)
+		}
+		if len(vs) > 0 {
+			registry = registry || IsOCI(s)
+			all = mergeVers(all, vs)
+		}
+	}
+	if len(all) > 0 {
+		return all, registry, nil
+	}
+	if haveUpstream() {
+		up, err := httpVersionsFor(UpstreamDist, project, osn, arch)
+		return up, false, bothPlacesLooked(err, project, osn, arch)
+	}
+	return nil, false, notCarried(project, osn, arch)
+}
+
+// versionsFromPrimary is the single-source form of versionsForSourced.
+func versionsFromPrimary(project, osn, arch string) ([]Ver, bool, error) {
 	if IsOCI(DistBase) {
 		vs, err := ociVersionsFor(project)
 		if err != nil {
@@ -964,7 +1021,7 @@ func haveUpstream() bool {
 // reader to check a second registry that was never configured.
 func notCarried(project, osn, arch string) error {
 	return fmt.Errorf("no %s for %s/%s: %s does not carry it, and no upstream is configured (set ZPKG_UPSTREAM_DIST)",
-		project, osn, arch, DistBase)
+		project, osn, arch, distLabel())
 }
 
 // bothPlacesLooked rewrites the upstream fallback's 404 to say what it means.
@@ -1069,7 +1126,12 @@ func httpVersionsFor(base, project, osn, arch string) ([]Ver, error) {
 // for the requested platform simply fails at download time, mirroring how the
 // static tree 404s a missing per-arch tarball.
 func ociVersionsFor(project string) ([]Ver, error) {
-	c, err := ociClientForDist()
+	return ociVersionsForSource(DistBase, project)
+}
+
+// ociVersionsForSource is ociVersionsFor for one named source.
+func ociVersionsForSource(base, project string) ([]Ver, error) {
+	c, err := ociClientFor(base)
 	if err != nil {
 		return nil, err
 	}
@@ -1489,17 +1551,31 @@ func quoteAll(constraints []string) string {
 //	resolve deps: no version of gnu.org/tar satisfies "*" AND is published
 //	for linux/x86-64 (available: …; satisfy but not published here: 1.35.0)
 func publishedTagFor(project string, v Ver, osn, arch string) (string, bool, error) {
-	c, err := ociClientForDist()
+	srcs, err := distSources()
 	if err != nil {
 		return "", false, err
 	}
-	for _, tag := range tagSpellings(v) {
-		ok, err := c.HasPlatform(project, tag, osn, arch)
+	// First source that publishes the platform answers; HTTP sources have no
+	// per-platform index to ask and are skipped (they list per platform).
+	for _, s := range srcs {
+		if !IsOCI(s) && len(srcs) > 1 {
+			continue
+		}
+		c, err := ociClientFor(s)
 		if err != nil {
 			return "", false, err
 		}
-		if ok {
-			return tag, true, nil
+		for _, tag := range tagSpellings(v) {
+			ok, err := c.HasPlatform(project, tag, osn, arch)
+			if err != nil {
+				if len(srcs) > 1 && (repoAbsent(err) || isNotFound(err)) {
+					break
+				}
+				return "", false, err
+			}
+			if ok {
+				return tag, true, nil
+			}
 		}
 	}
 	return "", false, nil
@@ -1607,8 +1683,27 @@ func (v Ver) Satisfies(constraint string) bool { return v.satisfies(constraint) 
 // and the extension that succeeded (".tar.gz" or ".tar.xz") — for mirror tooling
 // that copies artifacts verbatim without extracting them.
 func DownloadArtifact(project, ver, osn, arch string) ([]byte, string, error) {
-	if IsOCI(DistBase) {
-		c, err := ociClientForDist()
+	srcs, err := distSources()
+	if err != nil {
+		return nil, "", err
+	}
+	var errs []error
+	for _, s := range srcs {
+		data, ext, err := downloadArtifactFrom(s, project, ver, osn, arch)
+		if err == nil {
+			return data, ext, nil
+		}
+		errs = append(errs, fmt.Errorf("%s: %w", s, err))
+	}
+	if len(errs) == 1 {
+		return nil, "", errors.Unwrap(errs[0])
+	}
+	return nil, "", errors.Join(errs...)
+}
+
+func downloadArtifactFrom(base, project, ver, osn, arch string) ([]byte, string, error) {
+	if IsOCI(base) {
+		c, err := ociClientFor(base)
 		if err != nil {
 			return nil, "", err
 		}
@@ -1621,10 +1716,10 @@ func DownloadArtifact(project, ver, osn, arch string) ([]byte, string, error) {
 		}
 		return data, ext, nil
 	}
-	if err := httpDistUnverifiable(); err != nil {
+	if err := httpDistUnverifiable(base); err != nil {
 		return nil, "", err
 	}
-	base := fmt.Sprintf("%s/%s/%s/%s/v%s", DistBase, project, osn, arch, ver)
+	base = fmt.Sprintf("%s/%s/%s/%s/v%s", base, project, osn, arch, ver)
 	for _, ext := range []string{ExtTarGz, ExtTarXz} {
 		resp, err := HTTPClient.Get(base + ext)
 		if err != nil {
@@ -2339,11 +2434,11 @@ func verifyPulledDigest(c *OCIClient, project, ver, osn, arch, digest string) er
 // httpDistUnverifiable fails closed when verification is demanded but ZPKG_DIST
 // speaks static HTTP, which carries no signatures at all (referrers are
 // OCI-only).
-func httpDistUnverifiable() error {
+func httpDistUnverifiable(base string) error {
 	if !VerifyRequired() {
 		return nil
 	}
-	return fmt.Errorf("signature verification is on by default but ZPKG_DIST=%s (HTTP) has no signatures; use an oci:// dist or set ZPKG_VERIFY=0", DistBase)
+	return fmt.Errorf("signature verification is on by default but ZPKG_DIST=%s (HTTP) has no signatures; use an oci:// dist or set ZPKG_VERIFY=0", base)
 }
 
 // fetchArtifact returns the compressed artifact stream, trying .tar.gz then .tar.xz.
@@ -2366,8 +2461,29 @@ func httpDistUnverifiable() error {
 // already refuses that path unless verification is off. "" says so rather
 // than inventing one.
 func fetchArtifact(r Resolved, osn, arch string) (io.ReadCloser, string, string, error) {
-	if IsOCI(DistBase) {
-		c, err := ociClientForDist()
+	srcs, err := distSources()
+	if err != nil {
+		return nil, "", "", err
+	}
+	var errs []error
+	for _, s := range srcs {
+		f, ext, digest, err := fetchArtifactFrom(s, r, osn, arch)
+		if err == nil {
+			return f, ext, digest, nil
+		}
+		if len(srcs) == 1 {
+			return nil, "", "", err
+		}
+		errs = append(errs, fmt.Errorf("dist source %s: %w", s, err))
+	}
+	return nil, "", "", errors.Join(errs...)
+}
+
+// fetchArtifactFrom is fetchArtifact against ONE source: the artifact is
+// verified against that source's own signature.
+func fetchArtifactFrom(base string, r Resolved, osn, arch string) (io.ReadCloser, string, string, error) {
+	if IsOCI(base) {
+		c, err := ociClientFor(base)
 		if err != nil {
 			return nil, "", "", err
 		}
@@ -2406,10 +2522,10 @@ func fetchArtifact(r Resolved, osn, arch string) (io.ReadCloser, string, string,
 		}
 		return f, ext, f.Digest, nil
 	}
-	if err := httpDistUnverifiable(); err != nil {
+	if err := httpDistUnverifiable(base); err != nil {
 		return nil, "", "", err
 	}
-	base := fmt.Sprintf("%s/%s/%s/%s/v%s", DistBase, r.Project, osn, arch, r.Version.Raw)
+	base = fmt.Sprintf("%s/%s/%s/%s/v%s", base, r.Project, osn, arch, r.Version.Raw)
 	// Newest codec first: a dist that carries both serves the cheaper install.
 	for _, ext := range []string{ExtTarZst, ExtTarGz, ExtTarXz} {
 		resp, err := HTTPClient.Get(base + ext)
@@ -2467,18 +2583,24 @@ func untar(r io.Reader, dest string) error {
 // abiAnnotations is a seam: the manifest read that answers what an artifact
 // provides.
 var abiAnnotations = func(project, tag, osn, arch string) map[string]string {
-	if !IsOCI(DistBase) {
-		return nil
-	}
-	c, err := ociClientForDist()
+	srcs, err := distSources()
 	if err != nil {
 		return nil
 	}
-	ann, err := c.PlatformAnnotations(project, tag, osn, arch)
-	if err != nil {
-		return nil
+	// The first source that answers owns the artifact's annotations.
+	for _, s := range srcs {
+		if !IsOCI(s) {
+			continue
+		}
+		c, err := ociClientFor(s)
+		if err != nil {
+			continue
+		}
+		if ann, err := c.PlatformAnnotations(project, tag, osn, arch); err == nil {
+			return ann
+		}
 	}
-	return ann
+	return nil
 }
 
 // writeABILinks creates one `abi-<soname>` symlink per ABI the artifact provides,
