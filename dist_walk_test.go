@@ -113,6 +113,41 @@ func TestNothingCarriedFallsBackToTheUpstreamOnlyWhenOneIsSet(t *testing.T) {
 	}
 }
 
+func TestTheGlibcFloorIsReadFromWhicheverSourceCarriesIt(t *testing.T) {
+	_, zpkg, _, fr := twoSourcesFR(t)
+	_, err := zpkg.PushWithReferrersAnnotated(GlibcProject, "2.40.0", "linux", "x86-64",
+		makeGzTarball("glibc"), ".tar.gz", nil, map[string]string{GlibcMinKernelAnnotation: "4.19"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	// Carried by the second source only: the first answers "unknown repository".
+	if got, err := glibcMinKernelOf("2.40.0", "linux", "x86-64"); err != nil || got != "4.19" {
+		t.Errorf("glibcMinKernelOf = %q, %v", got, err)
+	}
+	// A source that cannot be read is an error, not a reason to ask the next.
+	failNamespace(fr, "run/packages")
+	if got, err := glibcMinKernelOf("2.40.0", "linux", "x86-64"); err == nil {
+		t.Errorf("glibcMinKernelOf past an unreadable source = %q", got)
+	}
+	// One source, not carried: the plain error, as before.
+	failNamespace(fr, "nothing-here")
+	DistBase, DistExtra = fr.base("run/packages"), nil
+	resetOCICache()
+	if _, err := glibcMinKernelOf("2.40.0", "linux", "x86-64"); err == nil {
+		t.Error("a glibc the only source lacks reported no error")
+	}
+	// A source that is not a usable registry reference is an error.
+	DistBase = "oci://registry.invalid"
+	if got, err := glibcMinKernelOf("2.40.0", "linux", "x86-64"); err == nil {
+		t.Errorf("a registry with no repository path answered %q", got)
+	}
+	// A static HTTP dist carries no annotations: unknown, not an error.
+	DistBase = "https://dist.example.invalid"
+	if got, err := glibcMinKernelOf("2.40.0", "linux", "x86-64"); err != nil || got != "" {
+		t.Errorf("http dist: %q, %v", got, err)
+	}
+}
+
 func TestABIAnnotationsComeFromTheFirstSourceThatAnswers(t *testing.T) {
 	stage, zpkg, _ := twoSources(t)
 	push := func(c *OCIClient, project, soname string) {
