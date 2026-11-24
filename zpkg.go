@@ -207,6 +207,9 @@ func applyEnv(get func(string) string) {
 		DistBase = list[0]
 		DistExtra = list[1:]
 		promotionSource = "" // the environment never grants the promotion exception
+		seedMu.Lock()
+		seedSource = "" // ...nor the seed exception
+		seedMu.Unlock()
 	}
 	if p := get("ZPKG_RECIPES"); p != "" {
 		PantryBase = strings.TrimRight(p, "/")
@@ -2508,6 +2511,10 @@ func fetchArtifactFrom(base string, r Resolved, osn, arch string) (io.ReadCloser
 					// "an optimisation and never an authority", and a path
 					// named from what a cache said would quietly become the
 					// exception to that the day the check is relaxed.
+					if err := noteSeed(c, base, r.Project, r.Version, tag, osn, arch, f.Digest); err != nil {
+						f.Close()
+						return nil, "", "", err
+					}
 					return f, ext, f.Digest, nil
 				}
 				f.Close()
@@ -2518,6 +2525,10 @@ func fetchArtifactFrom(base string, r Resolved, osn, arch string) (io.ReadCloser
 			return nil, "", "", err
 		}
 		if err := verifyPulledDigest(c, r.Project, tag, osn, arch, f.Digest); err != nil {
+			f.Close()
+			return nil, "", "", err
+		}
+		if err := noteSeed(c, base, r.Project, r.Version, tag, osn, arch, f.Digest); err != nil {
 			f.Close()
 			return nil, "", "", err
 		}
