@@ -75,6 +75,11 @@ ZPKG_DIST="oci://10.0.0.1:5111/run/packages oci://ghcr.io/go-zpkg/packages"
   `SeedLedger()` (project, version, digest, signers, source) so the caller can
   put it in the provenance of what it builds. The exception ends when `fn`
   returns; `CheckDistSource` never learns it and `ZPKG_DIST` clears it.
+  `SetSeedLedgerFile(path)` also appends each entry, as a JSON line, to a file
+  before the install returns (a write that fails fails the install), because
+  the process that installs a seed may replace itself with the build command.
+  `ReadSeedLedger` reads such a file in one canonical form and
+  `SeedLedgerDigest` hashes it, so a provenance can name the seed by one digest.
 
 ## What `Extract` refuses
 
