@@ -102,6 +102,24 @@ func TestTheSeedLedgerHasOneCanonicalForm(t *testing.T) {
 	if SeedLedgerDigest(e1) != SeedLedgerDigest(e2) || len(e1) != 2 || len(e2) != 2 {
 		t.Fatalf("digests differ: %d %d entries", len(e1), len(e2))
 	}
+	// The order is project, then version, then digest.
+	mix := strings.Join([]string{
+		`{"project":"b.test","version":"1","digest":"sha256:b1","signers":[],"source":"s"}`,
+		`{"project":"a.test","version":"2","digest":"sha256:a2","signers":[],"source":"s"}`,
+		`{"project":"a.test","version":"1","digest":"sha256:a1y","signers":[],"source":"s"}`,
+		`{"project":"a.test","version":"1","digest":"sha256:a1x","signers":[],"source":"s"}`,
+	}, "\n")
+	em, err := ReadSeedLedger(write("mix", mix))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var order []string
+	for _, e := range em {
+		order = append(order, e.Project+" "+e.Version+" "+e.Digest)
+	}
+	if got := strings.Join(order, ","); got != "a.test 1 sha256:a1x,a.test 1 sha256:a1y,a.test 2 sha256:a2,b.test 1 sha256:b1" {
+		t.Fatalf("order = %s", got)
+	}
 	e3, _ := ReadSeedLedger(write("3", a+"\n"))
 	if SeedLedgerDigest(e3) == SeedLedgerDigest(e1) {
 		t.Fatal("a smaller seed has the same digest")

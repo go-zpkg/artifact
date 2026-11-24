@@ -140,19 +140,18 @@ func SetSeedLedgerFile(path string) {
 }
 
 func appendSeedEntry(path string, e SeedEntry) error {
-	line, err := json.Marshal(e)
-	if err != nil {
-		return err
-	}
+	line, _ := json.Marshal(e) // a struct of strings cannot fail to marshal
 	f, err := os.OpenFile(path, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0o644)
+	if err == nil {
+		_, err = f.Write(append(line, '\n'))
+		if cerr := f.Close(); err == nil {
+			err = cerr
+		}
+	}
 	if err != nil {
 		return fmt.Errorf("seed ledger: %w", err)
 	}
-	if _, err := f.Write(append(line, '\n')); err != nil {
-		f.Close()
-		return fmt.Errorf("seed ledger: %w", err)
-	}
-	return f.Close()
+	return nil
 }
 
 // ReadSeedLedger reads a ledger file in its canonical form: one entry per
