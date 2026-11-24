@@ -105,7 +105,7 @@ func TestTheSeedLedgerHasOneCanonicalForm(t *testing.T) {
 	// The order is project, then version, then digest.
 	mix := strings.Join([]string{
 		`{"project":"b.test","version":"1","digest":"sha256:b1","signers":[],"source":"s"}`,
-		`{"project":"a.test","version":"2","digest":"sha256:a2","signers":[],"source":"s"}`,
+		`{"project":"a.test","version":"2","digest":"sha256:a0","signers":[],"source":"s"}`,
 		`{"project":"a.test","version":"1","digest":"sha256:a1y","signers":[],"source":"s"}`,
 		`{"project":"a.test","version":"1","digest":"sha256:a1x","signers":[],"source":"s"}`,
 	}, "\n")
@@ -117,7 +117,7 @@ func TestTheSeedLedgerHasOneCanonicalForm(t *testing.T) {
 	for _, e := range em {
 		order = append(order, e.Project+" "+e.Version+" "+e.Digest)
 	}
-	if got := strings.Join(order, ","); got != "a.test 1 sha256:a1x,a.test 1 sha256:a1y,a.test 2 sha256:a2,b.test 1 sha256:b1" {
+	if got := strings.Join(order, ","); got != "a.test 1 sha256:a1x,a.test 1 sha256:a1y,a.test 2 sha256:a0,b.test 1 sha256:b1" {
 		t.Fatalf("order = %s", got)
 	}
 	e3, _ := ReadSeedLedger(write("3", a+"\n"))
