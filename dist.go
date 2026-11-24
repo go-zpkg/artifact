@@ -84,6 +84,32 @@ func CheckDistSource(src string) error {
 	return nil
 }
 
+// promotionSource is the ONE go-pkgx registry a promotion may READ from. It is
+// set only by SetPromotionSource, which a promotion (zpkb factory --mirror-from
+// --require-origin) calls with the source it verifies artifact by artifact. It
+// is never taken from ZPKG_DIST, so a dependency cannot resolve from go-pkgx.
+var promotionSource string
+
+// SetPromotionSource points DistBase at from, the registry a promotion copies
+// artifacts out of, and lets exactly that spelling, as DistBase and nothing
+// else, pass CheckDistSource. DistExtra is cleared: a promotion reads one
+// source. Publishing to go-pkgx stays refused by the callers (oci_to), and a
+// go-pkgx entry in ZPKG_DIST (applyEnv) clears the allowance.
+func SetPromotionSource(from string) {
+	from = strings.TrimRight(from, "/")
+	DistBase, DistExtra = from, nil
+	promotionSource = from
+}
+
+// distSourceAllowed is CheckDistSource plus the promotion-source exception,
+// which applies to DistBase only.
+func distSourceAllowed(s string, isBase bool) error {
+	if isBase && promotionSource != "" && s == promotionSource {
+		return nil
+	}
+	return CheckDistSource(s)
+}
+
 // distSources returns the configured sources in priority order, refusing any
 // that CheckDistSource rejects. Every resolution path goes through it, so a
 // go-pkgx source fails the call that would have read it.
@@ -91,8 +117,8 @@ func distSources() ([]string, error) {
 	srcs := make([]string, 0, 1+len(DistExtra))
 	srcs = append(srcs, DistBase)
 	srcs = append(srcs, DistExtra...)
-	for _, s := range srcs {
-		if err := CheckDistSource(s); err != nil {
+	for i, s := range srcs {
+		if err := distSourceAllowed(s, i == 0); err != nil {
 			return nil, err
 		}
 	}
