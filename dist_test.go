@@ -139,7 +139,15 @@ func TestEveryResolutionPathRefusesGoPkgx(t *testing.T) {
 // run's staging registry, listed first) and "go-zpkg/packages".
 func twoSources(t *testing.T) (stage, zpkg *OCIClient, kp *sign.Keypair) {
 	t.Helper()
-	fr := newFakeRegistry(t, false)
+	stage, zpkg, kp, _ = twoSourcesFR(t)
+	return stage, zpkg, kp
+}
+
+// twoSourcesFR is twoSources that also hands back the fake registry, for a
+// test that injects a fault into one of the namespaces.
+func twoSourcesFR(t *testing.T) (stage, zpkg *OCIClient, kp *sign.Keypair, fr *fakeRegistry) {
+	t.Helper()
+	fr = newFakeRegistry(t, false)
 	t.Cleanup(fr.close)
 	var err error
 	if stage, err = NewOCIClient(fr.base("run/packages")); err != nil {
@@ -159,7 +167,7 @@ func twoSources(t *testing.T) (stage, zpkg *OCIClient, kp *sign.Keypair) {
 		SigningPublicKey, DistBase, DistExtra = oldK, oldB, oldX
 		resetOCICache()
 	})
-	return stage, zpkg, kp
+	return stage, zpkg, kp, fr
 }
 
 func readArtifact(t *testing.T, project string) ([]byte, error) {
