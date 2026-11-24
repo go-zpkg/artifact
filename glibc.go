@@ -145,18 +145,32 @@ func newestGlibcForKernel(kernel string) string {
 // its registry annotation. A static HTTP dist carries no annotations, so it
 // reports "unknown" (empty) rather than an error.
 var glibcMinKernelOf = func(ver, osn, arch string) (string, error) {
-	if !IsOCI(DistBase) {
-		return "", nil
-	}
-	c, err := ociClientForDist()
+	srcs, err := distSources()
 	if err != nil {
 		return "", err
 	}
-	ann, err := c.Annotations(GlibcProject, ver, osn, arch)
-	if err != nil {
-		return "", err
+	// The first source that carries the glibc answers; one that does not is
+	// skipped only while there is another to ask.
+	var last error
+	for _, s := range srcs {
+		if !IsOCI(s) {
+			continue
+		}
+		c, err := ociClientFor(s)
+		if err != nil {
+			return "", err
+		}
+		ann, err := c.Annotations(GlibcProject, ver, osn, arch)
+		if err != nil {
+			last = err
+			if len(srcs) > 1 && (repoAbsent(err) || isNotFound(err)) {
+				continue
+			}
+			return "", err
+		}
+		return Annotation(ann, GlibcMinKernelAnnotation), nil
 	}
-	return Annotation(ann, GlibcMinKernelAnnotation), nil
+	return "", last
 }
 
 // Annotations returns the OCI annotations of a published artifact's per-platform
