@@ -165,7 +165,7 @@ var (
 
 // ociClientForDist returns the OCIClient for the current DistBase, cached.
 func ociClientForDist() (*OCIClient, error) {
-	if err := CheckDistSource(DistBase); err != nil {
+	if err := distSourceAllowed(DistBase, true); err != nil {
 		return nil, err
 	}
 	return ociClientFor(DistBase)
@@ -206,6 +206,7 @@ func applyEnv(get func(string) string) {
 	if list := SplitDistList(get("ZPKG_DIST")); len(list) > 0 {
 		DistBase = list[0]
 		DistExtra = list[1:]
+		promotionSource = "" // the environment never grants the promotion exception
 	}
 	if p := get("ZPKG_RECIPES"); p != "" {
 		PantryBase = strings.TrimRight(p, "/")

@@ -57,9 +57,16 @@ ZPKG_DIST="oci://10.0.0.1:5111/run/packages oci://ghcr.io/go-zpkg/packages"
 - One value behaves exactly as before. This is how a run that stages its
   artifacts in its own registry lets their dependents resolve, while everything
   already published still comes from go-zpkg.
-- A source whose repository path has a `go-pkgx` component is REFUSED, with no
-  opt-out: we no longer publish there, and a dependency resolved from it would
-  silently undo that (`CheckDistSource`, `ErrClosedDistRegistry`).
+- A source whose repository path has a `go-pkgx` component is REFUSED as a
+  dependency source: we no longer publish there, and a dependency resolved from
+  it would silently undo that (`CheckDistSource`, `ErrClosedDistRegistry`). The
+  environment cannot lift it.
+- The one exception is a PROMOTION's source: `SetPromotionSource(from)` (called
+  by `zpkb factory --mirror-from --require-origin`) lets that exact spelling be
+  READ as the single `DistBase`, so the artifacts already published under
+  go-pkgx can be copied to go-zpkg, each one's signature verified. A go-pkgx
+  entry in `ZPKG_DIST`, a second source, or another go-pkgx repository stays
+  refused.
 
 ## What `Extract` refuses
 
