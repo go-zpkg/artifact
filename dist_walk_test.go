@@ -136,6 +136,11 @@ func TestTheGlibcFloorIsReadFromWhicheverSourceCarriesIt(t *testing.T) {
 	if _, err := glibcMinKernelOf("2.40.0", "linux", "x86-64"); err == nil {
 		t.Error("a glibc the only source lacks reported no error")
 	}
+	// A source that is not a usable registry reference is an error.
+	DistBase = "oci://registry.invalid"
+	if got, err := glibcMinKernelOf("2.40.0", "linux", "x86-64"); err == nil {
+		t.Errorf("a registry with no repository path answered %q", got)
+	}
 	// A static HTTP dist carries no annotations: unknown, not an error.
 	DistBase = "https://dist.example.invalid"
 	if got, err := glibcMinKernelOf("2.40.0", "linux", "x86-64"); err != nil || got != "" {
