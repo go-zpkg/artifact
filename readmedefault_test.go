@@ -59,9 +59,9 @@ func TestTheReadmeNamesTheRealRegistryDefault(t *testing.T) {
 // value is a perfectly good-looking URL, so a reader cannot tell it apart;
 // naming it here is what makes the next rename stop.
 func TestTheReadmeDoesNotNameTheEmptyRegistry(t *testing.T) {
-	const empty = "oci://ghcr.io/go-zpkg/packages"
-	if strings.Contains(DefaultDistBase, "go-zpkg/packages") {
-		t.Skip("the default now points there, so the artifacts moved and this check is obsolete")
+	const empty = "oci://ghcr.io/go-pkgx/packages"
+	if strings.Contains(DefaultDistBase, "go-pkgx/packages") {
+		t.Fatal("the default points at go-pkgx, which is refused (CheckDistSource)")
 	}
 	body, err := os.ReadFile("README.md")
 	if err != nil {

@@ -6,8 +6,8 @@
 
 The pure-Go **artifact client** — the shared backend of the `zpkx` family. It
 resolves a package's dependency closure, downloads the artifacts from the
-configured `ZPKG_DIST` (default: `oci://ghcr.io/go-pkgx/packages`, the signed
-registry the published artifacts are actually in — see `DistBase` in `zpkg.go`),
+configured `ZPKG_DIST` (default: `oci://ghcr.io/go-zpkg/packages`, the signed
+registry — see `DefaultDistBase` in `zpkg.go`),
 completes the implicit libc/gcc closure a `FROM scratch` image needs, and
 execs through the glibc artifact's own loader. `CGO_ENABLED=0`, no runtime
 dependencies of its own.
@@ -39,6 +39,27 @@ so both tools share one source of truth for the artifact protocol.
   the system temp directory: `FROM scratch` has no `/tmp`, and until this was
   measured by building that image and running it, `zpks catalog update` failed
   on the one image this package exists to serve.
+
+## `ZPKG_DIST` is an ordered list, and go-pkgx is refused
+
+`ZPKG_DIST` holds one or more dist sources separated by whitespace or commas,
+highest priority first:
+
+```sh
+ZPKG_DIST="oci://10.0.0.1:5111/run/packages oci://ghcr.io/go-zpkg/packages"
+```
+
+- Version listing is the union across the sources, each consulted in order;
+  a source that does not carry the project contributes nothing.
+- An artifact is installed from the FIRST source that has it, verified against
+  that source's own signature; a source that lacks it, or fails verification,
+  falls through to the next.
+- One value behaves exactly as before. This is how a run that stages its
+  artifacts in its own registry lets their dependents resolve, while everything
+  already published still comes from go-zpkg.
+- A source whose repository path has a `go-pkgx` component is REFUSED, with no
+  opt-out: we no longer publish there, and a dependency resolved from it would
+  silently undo that (`CheckDistSource`, `ErrClosedDistRegistry`).
 
 ## What `Extract` refuses
 
