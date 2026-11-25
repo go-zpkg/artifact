@@ -137,3 +137,36 @@ func TestAMarkerThatCannotBeWrittenOrReadIsAnError(t *testing.T) {
 		t.Errorf("an unreadable marker: seeded=%v err=%v, want an error", seeded, err)
 	}
 }
+
+// An artifact that cannot take the marker is not installed under the seed:
+// here the marker's own name is a directory inside it.
+func TestASeedInstallThatCannotBeMarkedFails(t *testing.T) {
+	resetSeedState(t)
+	reg := newFakeRegistry(t, false)
+	seedBase := reg.base("go-pkgx/packages")
+	pinSeed(seedBase)
+	kp, err := sign.Generate()
+	if err != nil {
+		t.Fatal(err)
+	}
+	oldKey := SigningPublicKey
+	SigningPublicKey = kp.PublicKeyString()
+	t.Cleanup(func() { SigningPublicKey = oldKey; SetSeedLedgerFile("") })
+	c, err := NewOCIClient(seedBase)
+	if err != nil {
+		t.Fatal(err)
+	}
+	pushSignedArtifact(t, c, "f.test", kp, makeGzTarballAt("f.test/v1.0.0/"+SeedMarkerName+"/x", "x"), true)
+	SetSeedLedgerFile(filepath.Join(t.TempDir(), "ledger.jsonl"))
+	store := t.TempDir()
+	err = WithSeedSource(seedBase, func() error {
+		_, err := InstallFor(markFixtureResolved, store, "linux", "x86-64")
+		return err
+	})
+	if err == nil {
+		t.Fatal("a seed install whose prefix cannot take the marker succeeded")
+	}
+	if _, ok := ResolveBuild(store, "f.test", markFixtureResolved.Version); ok {
+		t.Fatal("the unmarked prefix was left in the store")
+	}
+}
