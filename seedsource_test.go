@@ -3,6 +3,8 @@ package artifact
 import (
 	"errors"
 	"io"
+	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/go-attest/sign"
@@ -15,15 +17,23 @@ func resetSeedState(t *testing.T) {
 	oldS, oldL := seedSource, seedLedger
 	seedSource, seedLedger = "", nil
 	seedMu.Unlock()
+	oldPin := seedRegistryPin
+	SetSeedLedgerFile(filepath.Join(t.TempDir(), "ledger.jsonl"))
 	t.Cleanup(func() {
 		DistBase, DistExtra, promotionSource = oldB, oldX, oldP
 		seedMu.Lock()
 		seedSource, seedLedger = oldS, oldL
 		seedMu.Unlock()
+		seedRegistryPin = oldPin
+		SetSeedLedgerFile("")
 		resetOCICache()
 	})
 	promotionSource = ""
 }
+
+// pinSeed points the seed pin at a registry on 127.0.0.1, which is what a test
+// can serve; the pin itself is a constant outside the package.
+func pinSeed(base string) { seedRegistryPin = strings.TrimRight(base, "/") }
 
 // Half one: the seed IS accepted, as the build environment, inside the call.
 func TestASeedSourceInGoPkgxIsAcceptedAsABuildEnvironment(t *testing.T) {
@@ -126,6 +136,7 @@ func TestASeedArtifactIsRecordedInTheLedger(t *testing.T) {
 	resetSeedState(t)
 	reg := newFakeRegistry(t, false)
 	seedBase := reg.base("go-pkgx/packages")
+	pinSeed(seedBase)
 	kp, err := sign.Generate()
 	if err != nil {
 		t.Fatal(err)
@@ -177,6 +188,7 @@ func TestAnUnsignedSeedIsNotInstalled(t *testing.T) {
 	resetSeedState(t)
 	reg := newFakeRegistry(t, false)
 	seedBase := reg.base("go-pkgx/packages")
+	pinSeed(seedBase)
 	c, err := NewOCIClient(seedBase)
 	if err != nil {
 		t.Fatal(err)

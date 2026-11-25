@@ -627,7 +627,7 @@ func (c *OCIClient) VerifyArtifactDigest(project, ver, osn, arch, digest string)
 // unimplementable — "both builders signed this" and "one did" were the same
 // answer.
 func (c *OCIClient) SignaturesOfDigest(project, ver, osn, arch, digest string) (SignatureReport, error) {
-	trust, err := LoadTrustSet()
+	trust, err := activeTrustSet()
 	if err != nil {
 		return SignatureReport{}, err
 	}
@@ -662,7 +662,7 @@ func (c *OCIClient) SignaturesOfDigest(project, ver, osn, arch, digest string) (
 // provenance referrer, say) to the signature: the signed payload can name that
 // fact's digest, and nothing a registry serves unsigned can.
 func (c *OCIClient) VerifiedPayloads(project, ver, osn, arch, digest string) ([][]byte, error) {
-	trust, err := LoadTrustSet()
+	trust, err := activeTrustSet()
 	if err != nil {
 		return nil, err
 	}
@@ -728,7 +728,7 @@ func (c *OCIClient) SignaturesOfTag(project, tag, osn, arch string) (SignatureRe
 // prints it must keep that distinction — the registry is still full of
 // artifacts published before any of this existed.
 func (c *OCIClient) ProvenanceOfTag(project, tag, osn, arch string) (SignatureReport, string, error) {
-	trust, err := LoadTrustSet()
+	trust, err := activeTrustSet()
 	if err != nil {
 		return SignatureReport{}, "", err
 	}
