@@ -80,6 +80,11 @@ ZPKG_DIST="oci://10.0.0.1:5111/run/packages oci://ghcr.io/go-zpkg/packages"
   the process that installs a seed may replace itself with the build command.
   `ReadSeedLedger` reads such a file in one canonical form and
   `SeedLedgerDigest` hashes it, so a provenance can name the seed by one digest.
+  Every prefix installed from a seed carries a `.zpkg-seeded` marker holding
+  the artifact digest (written before the prefix is renamed into place);
+  `IsSeedPrefix(prefix)` reads it, so a builder that stages the prefix can
+  refuse it or declare the build seeded. A marker that is not a small regular
+  file still counts as seeded.
 
 ## What `Extract` refuses
 
