@@ -2289,6 +2289,11 @@ func InstallFor(r Resolved, pkgxDir, osn, arch string) (bool, error) {
 	// version) follow the symlink and need no change; what the symlink points
 	// at is which build is the store's default.
 	src, _ := extractedPrefix(tmp, r)
+	if seedInForce() {
+		if err := markSeedPrefix(src, digest); err != nil {
+			return false, err
+		}
+	}
 	hash := StoreHash(r.Version, digest, DistBase+"\x00"+r.Project+"\x00"+r.Version.Raw+"\x00"+osn+"/"+arch)
 	if moved, err := renameOrExplain(src, pkgxDir, r.Project, r.Version, hash); err != nil || !moved {
 		return false, err
