@@ -118,8 +118,8 @@ func TestASeedLedgerFileIsBoundedBeforeItIsRead(t *testing.T) {
 // A ledger that cannot be opened or read is an error, never an empty ledger.
 func TestAnUnreadableSeedLedgerIsAnError(t *testing.T) {
 	dir := t.TempDir()
-	if _, err := ReadSeedLedger(filepath.Join(dir, "absent")); err == nil {
-		t.Error("a missing ledger read as empty")
+	if _, err := ReadSeedLedger(filepath.Join(dir, "absent")); !errors.Is(err, os.ErrNotExist) {
+		t.Errorf("a missing ledger: %v, want the open error", err)
 	}
 	if _, err := ReadSeedLedger(dir); err == nil {
 		t.Error("a directory read as a ledger")
