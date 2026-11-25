@@ -57,6 +57,7 @@ func TestASeedIsNotInstalledWhenTheLedgerCannotBeWritten(t *testing.T) {
 			resetSeedState(t)
 			reg := newFakeRegistry(t, false)
 			seedBase := reg.base("go-pkgx/packages")
+			pinSeed(seedBase)
 			kp, err := sign.Generate()
 			if err != nil {
 				t.Fatal(err)

@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"os"
 	"sort"
 	"strings"
@@ -38,7 +39,10 @@ type SeedEntry struct {
 	Version string   `json:"version"`
 	Digest  string   `json:"digest"`
 	Signers []string `json:"signers"`
-	Source  string   `json:"source"`
+	// Keys are the ids of the keys that signed it: a name is a label an
+	// operator can rename, a key id is not.
+	Keys   []string `json:"keys"`
+	Source string   `json:"source"`
 }
 
 var (
@@ -48,6 +52,41 @@ var (
 	// seedLedgerFile is set by SetSeedLedgerFile.
 	seedLedgerFile string
 )
+
+// SeedRegistry is the only registry a seed is read from. It is a constant, not
+// a parameter: a seed named by a caller (or by an environment a recipe can set)
+// is a seed chosen by whoever can reach the caller.
+const SeedRegistry = "oci://ghcr.io/go-pkgx/packages"
+
+// seedRegistryPin is SeedRegistry as WithSeedSource compares against. It is a
+// variable only so a test can point it at a registry on 127.0.0.1; nothing
+// outside the package can change it.
+var seedRegistryPin = SeedRegistry
+
+// MaxSeedLedgerBytes bounds a ledger file before it is read: the entries are
+// capped by the caller, but only after the whole file is in memory.
+const MaxSeedLedgerBytes = 16 << 20
+
+// ErrSeedSource is returned when a seed is asked for from anywhere but
+// SeedRegistry, or without a ledger to record it in.
+var ErrSeedSource = errors.New("a seed has one source and is always recorded")
+
+// SeedTrustSet is the trust a seed is verified against: the compiled-in keys
+// and no others. The environment and ~/.zpkg/config.hcl2 are NOT consulted, so
+// nothing a dispatcher or a recipe can set widens who may vouch for the seed.
+func SeedTrustSet() TrustSet { return DefaultTrustSet() }
+
+// activeTrustSet is the trust set an install verifies against: the seed's while
+// a seed is in force, the operator's otherwise.
+func activeTrustSet() (TrustSet, error) {
+	seedMu.Lock()
+	inSeed := seedSource != ""
+	seedMu.Unlock()
+	if inSeed {
+		return SeedTrustSet(), nil
+	}
+	return LoadTrustSet()
+}
 
 // ErrSeedUnverified is returned when a seed was asked for while signature
 // verification is off, or for a transport that carries no signatures.
@@ -64,6 +103,15 @@ func WithSeedSource(from string, fn func() error) error {
 	}
 	if !VerifyRequired() {
 		return fmt.Errorf("seed source %q: %w (signature verification is off)", from, ErrSeedUnverified)
+	}
+	if from != seedRegistryPin {
+		return fmt.Errorf("seed source %q: %w: the seed is %s and nothing else", from, ErrSeedSource, seedRegistryPin)
+	}
+	seedMu.Lock()
+	file := seedLedgerFile
+	seedMu.Unlock()
+	if file == "" {
+		return fmt.Errorf("seed source %q: %w: no ledger file is set, and a seed that is not recorded is not installed", from, ErrSeedSource)
 	}
 	oldBase, oldExtra := DistBase, DistExtra
 	seedMu.Lock()
@@ -114,14 +162,21 @@ func noteSeed(c *OCIClient, base, project string, v Ver, tag, osn, arch, digest 
 	e := SeedEntry{Project: project, Version: v.Raw, Digest: digest,
 		Signers: append([]string(nil), rep.Signers...), Source: src}
 	sort.Strings(e.Signers)
+	byName := map[string]string{}
+	for _, s := range SeedTrustSet().Signers {
+		byName[s.Name] = s.KeyID()
+	}
+	for _, n := range e.Signers {
+		if id, ok := byName[n]; ok {
+			e.Keys = append(e.Keys, id)
+		}
+	}
+	sort.Strings(e.Keys)
 	seedMu.Lock()
 	seedLedger = append(seedLedger, e)
 	file := seedLedgerFile
 	seedMu.Unlock()
-	if file == "" {
-		return nil
-	}
-	return appendSeedEntry(file, e)
+	return appendSeedEntry(file, e) // "" fails: WithSeedSource never lets a seed run unrecorded
 }
 
 // SetSeedLedgerFile names a file every seed artifact is ALSO appended to, one
@@ -159,9 +214,17 @@ func appendSeedEntry(path string, e SeedEntry) error {
 // not an entry is an error, never skipped: a ledger that silently loses a
 // line understates the seed.
 func ReadSeedLedger(path string) ([]SeedEntry, error) {
-	b, err := os.ReadFile(path)
+	f, err := os.Open(path)
 	if err != nil {
 		return nil, fmt.Errorf("seed ledger: %w", err)
+	}
+	defer f.Close()
+	b, err := io.ReadAll(io.LimitReader(f, MaxSeedLedgerBytes+1))
+	if err != nil {
+		return nil, fmt.Errorf("seed ledger: %w", err)
+	}
+	if len(b) > MaxSeedLedgerBytes {
+		return nil, fmt.Errorf("seed ledger %s: larger than %d bytes", path, MaxSeedLedgerBytes)
 	}
 	seen := map[string]bool{}
 	var out []SeedEntry
