@@ -51,6 +51,11 @@ var (
 	seedLedger []SeedEntry
 	// seedLedgerFile is set by SetSeedLedgerFile.
 	seedLedgerFile string
+	// seedLedgerOut is set by SetSeedLedgerFD: a descriptor the caller handed
+	// over, written with no path lookup. It and seedLedgerFile are exclusive.
+	seedLedgerOut *os.File
+	// seedWriteMu serialises the writes to seedLedgerOut so lines never mix.
+	seedWriteMu sync.Mutex
 )
 
 // SeedRegistry is the only registry a seed is read from. It is a constant, not
@@ -109,8 +114,9 @@ func WithSeedSource(from string, fn func() error) error {
 	}
 	seedMu.Lock()
 	file := seedLedgerFile
+	out := seedLedgerOut
 	seedMu.Unlock()
-	if file == "" {
+	if file == "" && out == nil {
 		return fmt.Errorf("seed source %q: %w: no ledger file is set, and a seed that is not recorded is not installed", from, ErrSeedSource)
 	}
 	oldBase, oldExtra := DistBase, DistExtra
@@ -174,9 +180,38 @@ func noteSeed(c *OCIClient, base, project string, v Ver, tag, osn, arch, digest 
 	sort.Strings(e.Keys)
 	seedMu.Lock()
 	seedLedger = append(seedLedger, e)
-	file := seedLedgerFile
+	file, out := seedLedgerFile, seedLedgerOut
 	seedMu.Unlock()
+	if out != nil {
+		return writeSeedEntry(out, e)
+	}
 	return appendSeedEntry(file, e) // "" fails: WithSeedSource never lets a seed run unrecorded
+}
+
+// SetSeedLedgerFD names a descriptor every seed artifact is ALSO written to, one
+// JSON object per line, the moment it is verified, replacing a ledger file
+// (SetSeedLedgerFile). The descriptor is the caller's own, inherited from the
+// process that started this one, so recording an entry never looks a path up: a
+// path can be missing, or resolve to a file another process made, and a ledger
+// written there is a ledger nobody reads. nil clears it. A write that fails
+// fails the install.
+func SetSeedLedgerFD(f *os.File) {
+	seedMu.Lock()
+	seedLedgerOut = f
+	if f != nil {
+		seedLedgerFile = ""
+	}
+	seedMu.Unlock()
+}
+
+func writeSeedEntry(f *os.File, e SeedEntry) error {
+	line, _ := json.Marshal(e)
+	seedWriteMu.Lock()
+	defer seedWriteMu.Unlock()
+	if _, err := f.Write(append(line, '\n')); err != nil {
+		return fmt.Errorf("seed ledger: %w", err)
+	}
+	return nil
 }
 
 // SetSeedLedgerFile names a file every seed artifact is ALSO appended to, one
@@ -191,6 +226,9 @@ func noteSeed(c *OCIClient, base, project string, v Ver, tag, osn, arch, digest 
 func SetSeedLedgerFile(path string) {
 	seedMu.Lock()
 	seedLedgerFile = path
+	if path != "" {
+		seedLedgerOut = nil
+	}
 	seedMu.Unlock()
 }
 
