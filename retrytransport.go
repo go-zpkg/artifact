@@ -38,6 +38,9 @@ func (t *retryTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 		err  error
 	)
 	for attempt := 1; ; attempt++ {
+		if cerr := req.Context().Err(); cerr != nil {
+			return nil, cerr
+		}
 		resp, err = base.RoundTrip(req)
 		retryable := false
 		switch {

@@ -10,6 +10,15 @@ import (
 	"time"
 )
 
+// getWithin GETs under a deadline: an unbounded retry loop (the sleep is a
+// no-op here) becomes a failing test, not a hung one.
+func getWithin(c *http.Client, url string) (*http.Response, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	time.AfterFunc(4*time.Second, cancel)
+	req, _ := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+	return c.Do(req)
+}
+
 func noRetrySleep(t *testing.T) {
 	t.Helper()
 	old := ociRetrySleep
@@ -34,7 +43,7 @@ func TestRetryTransportRecoversFromTransientFailures(t *testing.T) {
 	defer func() { Warn = oldWarn }()
 
 	c := &http.Client{Transport: &retryTransport{}}
-	resp, err := c.Get(srv.URL)
+	resp, err := getWithin(c, srv.URL)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -59,7 +68,7 @@ func TestRetryTransportRetriesDroppedConnection(t *testing.T) {
 		_, _ = w.Write([]byte("ok"))
 	}))
 	defer srv.Close()
-	resp, err := (&http.Client{Transport: &retryTransport{}}).Get(srv.URL)
+	resp, err := getWithin(&http.Client{Transport: &retryTransport{}}, srv.URL)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -109,7 +118,7 @@ func TestRetryTransportSparesNotFound(t *testing.T) {
 		http.NotFound(w, r)
 	}))
 	defer srv.Close()
-	resp, err := (&http.Client{Transport: &retryTransport{}}).Get(srv.URL)
+	resp, err := getWithin(&http.Client{Transport: &retryTransport{}}, srv.URL)
 	if err != nil {
 		t.Fatal(err)
 	}
