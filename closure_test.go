@@ -178,6 +178,10 @@ func TestProjectForSonameAddedMappings(t *testing.T) {
 		"libprotoc.so.25.7.0":      "protobuf.dev",
 		"libcap.so.2":              "kernel.org/libcap",
 		"libudev.so.1":             "github.com/eudev-project/eudev",
+		"libicuuc.so.71":           "unicode.org", // pkgx libpsl NEEDs it, undeclared
+		"libicui18n.so.71":         "unicode.org",
+		"libicudata.so.71":         "unicode.org",
+		"libicuio.so.71":           "unicode.org",
 	}
 	for in, want := range cases {
 		if got := projectForSoname(in); got != want {

@@ -85,6 +85,13 @@ var sonameProject = map[string]string{
 	"libclang":     "llvm.org",
 	"libgflags":    "gflags.github.io",
 	"libcap":       "kernel.org/libcap",
+	// ICU4C. pkgx's libpsl is linked to it (libicuuc.so.71) without declaring
+	// it, so a seed rootfs holding that libpsl could not load it, and curl's
+	// configure died at "checking runtime libs availability" (seed pass 1b).
+	"libicuuc":   "unicode.org",
+	"libicui18n": "unicode.org",
+	"libicudata": "unicode.org",
+	"libicuio":   "unicode.org",
 	// eudev is the lightweight standalone libudev provider (a few files) vs
 	// pulling all of systemd (200+ binaries) just for libudev.so.1.
 	"libudev": "github.com/eudev-project/eudev",

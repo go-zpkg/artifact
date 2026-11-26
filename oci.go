@@ -226,6 +226,10 @@ func newOCIClientEnv(base string, getenv func(string) string) (*OCIClient, error
 		hc.Transport = &credentialGuard{base: hc.Transport, host: host}
 		ac.Client = &hc
 	}
+	// Outermost: a retried request goes through the credential guard again.
+	rc := *ac.Client
+	rc.Transport = &retryTransport{base: rc.Transport}
+	ac.Client = &rc
 	return &OCIClient{
 		host:      host,
 		repoBase:  strings.ToLower(repoBase),
