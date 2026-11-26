@@ -144,3 +144,20 @@ func TestOCIClientRetries(t *testing.T) {
 		})
 	}
 }
+
+type countingRT struct{ n int }
+
+func (c *countingRT) RoundTrip(*http.Request) (*http.Response, error) {
+	c.n++
+	return &http.Response{StatusCode: 200, Body: http.NoBody}, nil
+}
+
+func TestRetryTransportSendsNothingForACancelledRequest(t *testing.T) {
+	base := &countingRT{}
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	req, _ := http.NewRequestWithContext(ctx, http.MethodGet, "http://example.test/", nil)
+	if _, err := (&retryTransport{base: base}).RoundTrip(req); err == nil || base.n != 0 {
+		t.Fatalf("err=%v after %d sends, want an error and none sent", err, base.n)
+	}
+}
