@@ -1,6 +1,7 @@
 package artifact
 
 import (
+	"context"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -77,12 +78,16 @@ func TestRetryTransportIsBoundedAndSparesWrites(t *testing.T) {
 	}))
 	defer srv.Close()
 	c := &http.Client{Transport: &retryTransport{}}
-	resp, err := c.Get(srv.URL)
+	// A deadline turns an unbounded retry loop into a failure, not a hang.
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
+	req, _ := http.NewRequestWithContext(ctx, http.MethodGet, srv.URL, nil)
+	resp, err := c.Do(req)
 	if err != nil {
-		t.Fatal(err)
+		t.Fatalf("%v after %d requests, want 502 after %d", err, n.Load(), ociAttempts)
 	}
 	resp.Body.Close()
-	if resp.StatusCode != 502 || int(n.Load()) != ociAttempts {
+	if resp.StatusCode != 502|| int(n.Load()) != ociAttempts {
 		t.Fatalf("status %d after %d requests, want 502 after %d", resp.StatusCode, n.Load(), ociAttempts)
 	}
 	n.Store(0)
