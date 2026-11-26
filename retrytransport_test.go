@@ -87,7 +87,7 @@ func TestRetryTransportIsBoundedAndSparesWrites(t *testing.T) {
 		t.Fatalf("%v after %d requests, want 502 after %d", err, n.Load(), ociAttempts)
 	}
 	resp.Body.Close()
-	if resp.StatusCode != 502|| int(n.Load()) != ociAttempts {
+	if resp.StatusCode != 502 || int(n.Load()) != ociAttempts {
 		t.Fatalf("status %d after %d requests, want 502 after %d", resp.StatusCode, n.Load(), ociAttempts)
 	}
 	n.Store(0)
