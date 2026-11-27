@@ -1,10 +1,10 @@
 package artifact
 
 import (
-	"context"
 	"errors"
 	"io"
 	"net/http"
+	"syscall"
 	"time"
 )
 
@@ -45,10 +45,7 @@ func (t *retryTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 		retryable := false
 		switch {
 		case err != nil:
-			retryable = !errors.Is(err, context.Canceled) && !errors.Is(err, context.DeadlineExceeded) || isNetTimeout(err)
-			if req.Context().Err() != nil {
-				retryable = false
-			}
+			retryable = isTransient(err) && req.Context().Err() == nil
 		default:
 			switch resp.StatusCode {
 			case http.StatusTooManyRequests, http.StatusBadGateway, http.StatusServiceUnavailable, http.StatusGatewayTimeout:
@@ -71,7 +68,15 @@ func (t *retryTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 	}
 }
 
-func isNetTimeout(err error) bool {
+// isTransient reports a failure worth retrying: a timeout, or a connection
+// that was cut (EOF, reset, broken pipe). A refused connection or an unknown
+// host is not transient: waiting does not change the answer, and retrying them
+// would stall every caller pointed at a dead address.
+func isTransient(err error) bool {
+	if errors.Is(err, io.EOF) || errors.Is(err, io.ErrUnexpectedEOF) ||
+		errors.Is(err, syscall.ECONNRESET) || errors.Is(err, syscall.EPIPE) {
+		return true
+	}
 	var te interface{ Timeout() bool }
 	return errors.As(err, &te) && te.Timeout()
 }

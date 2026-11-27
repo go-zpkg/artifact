@@ -2,10 +2,13 @@ package artifact
 
 import (
 	"context"
+	"errors"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"sync/atomic"
+	"syscall"
 	"testing"
 	"time"
 )
@@ -107,6 +110,42 @@ func TestRetryTransportIsBoundedAndSparesWrites(t *testing.T) {
 	resp.Body.Close()
 	if n.Load() != 1 {
 		t.Fatalf("a POST was tried %d times, want 1", n.Load())
+	}
+}
+
+func TestRetryTransportSparesARefusedConnection(t *testing.T) {
+	noRetrySleep(t)
+	srv := httptest.NewServer(http.NotFoundHandler())
+	url := srv.URL
+	srv.Close() // nothing listens there now: connection refused
+	var slept atomic.Int32
+	ociRetrySleep = func(time.Duration) { slept.Add(1) }
+	_, err := getWithin(&http.Client{Transport: &retryTransport{}}, url)
+	if err == nil {
+		t.Fatal("a closed port answered")
+	}
+	if slept.Load() != 0 {
+		t.Fatalf("a refused connection was retried %d times, want 0", slept.Load())
+	}
+}
+
+func TestIsTransient(t *testing.T) {
+	for _, c := range []struct {
+		err  error
+		want bool
+	}{
+		{io.EOF, true},
+		{io.ErrUnexpectedEOF, true},
+		{syscall.ECONNRESET, true},
+		{syscall.EPIPE, true},
+		{syscall.ECONNREFUSED, false},
+		{context.Canceled, false},
+		{context.DeadlineExceeded, true},
+		{errors.New("no such host"), false},
+	} {
+		if got := isTransient(c.err); got != c.want {
+			t.Errorf("isTransient(%v) = %v, want %v", c.err, got, c.want)
+		}
 	}
 }
 
