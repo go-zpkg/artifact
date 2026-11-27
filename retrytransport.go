@@ -1,7 +1,6 @@
 package artifact
 
 import (
-	"context"
 	"errors"
 	"io"
 	"net/http"
@@ -74,9 +73,6 @@ func (t *retryTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 // host is not transient: waiting does not change the answer, and retrying them
 // would stall every caller pointed at a dead address.
 func isTransient(err error) bool {
-	if errors.Is(err, context.Canceled) {
-		return false
-	}
 	if errors.Is(err, io.EOF) || errors.Is(err, io.ErrUnexpectedEOF) ||
 		errors.Is(err, syscall.ECONNRESET) || errors.Is(err, syscall.EPIPE) {
 		return true
