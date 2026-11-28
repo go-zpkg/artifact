@@ -1763,7 +1763,7 @@ func downloadArtifactFrom(base, project, ver, osn, arch string) ([]byte, string,
 func reduceDeps(m map[string]any, osn, arch string) map[string]string {
 	out := map[string]string{}
 	for k, v := range m {
-		if !isPlatformKey(k) {
+		if !isPlatformKey(k) && !isVersionScopeKey(k) {
 			out[k] = constraintText(v)
 		}
 	}
@@ -1779,8 +1779,36 @@ func reduceDeps(m map[string]any, osn, arch string) map[string]string {
 			out[pk] = constraintText(pv)
 		}
 	}
+	// Version scopes last: the scoped constraint is the more specific statement.
+	// This walk knows no package version (it runs before one is resolved), so
+	// every scope is UNIONED, the same resolution zpkb reaches for an unknown
+	// version: a closure too large builds something, one too small builds a
+	// package missing a library. Sorted, so two runs agree on a collision.
+	scopes := make([]string, 0, len(m))
+	for k := range m {
+		if isVersionScopeKey(k) {
+			scopes = append(scopes, k)
+		}
+	}
+	sort.Strings(scopes)
+	for _, k := range scopes {
+		if sub, ok := m[k].(map[string]any); ok {
+			for pk, pv := range reduceDeps(sub, osn, arch) {
+				out[pk] = pv
+			}
+		}
+	}
 	return out
 }
+
+// versionScopeKeyRE matches a dependency-map key that scopes its sub-map to the
+// package's OWN version (`">=9": {...}`) instead of naming a project or a
+// platform. The schema's depKey grammar admits only [A-Za-z0-9._+-] segments, so
+// a key carrying any of < > = ^ ~ * cannot be a project name. It is not a
+// first-character test: 26 upstream projects begin with `v`.
+var versionScopeKeyRE = regexp.MustCompile(`[<>=^~*]`)
+
+func isVersionScopeKey(k string) bool { return versionScopeKeyRE.MatchString(k) }
 
 // constraintText renders a version constraint the way the resolver reads it.
 //
