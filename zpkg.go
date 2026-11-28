@@ -1760,55 +1760,8 @@ func downloadArtifactFrom(base, project, ver, osn, arch string) ([]byte, string,
 // darwin, where both constraints happen to be `^2` and the coin toss cannot be
 // seen. Rare is not the same as harmless: it is one build in five of the
 // largest package in the pantry.
-func reduceDeps(m map[string]any, osn, arch string) map[string]string {
-	out := map[string]string{}
-	for k, v := range m {
-		if !isPlatformKey(k) && !isVersionScopeKey(k) {
-			out[k] = constraintText(v)
-		}
-	}
-	// `linux:` then `linux/x86-64:`, never the reverse: both match this host,
-	// and the one that names the ARCH is the more specific of the two. Left to
-	// map order that pair would race exactly as the one above did.
-	for _, key := range []string{osn, osn + "/" + arch} {
-		sub, ok := m[key].(map[string]any)
-		if !ok {
-			continue
-		}
-		for pk, pv := range sub {
-			out[pk] = constraintText(pv)
-		}
-	}
-	// Version scopes last: the scoped constraint is the more specific statement.
-	// This walk knows no package version (it runs before one is resolved), so
-	// every scope is UNIONED, the same resolution zpkb reaches for an unknown
-	// version: a closure too large builds something, one too small builds a
-	// package missing a library. Sorted, so two runs agree on a collision.
-	scopes := make([]string, 0, len(m))
-	for k := range m {
-		if isVersionScopeKey(k) {
-			scopes = append(scopes, k)
-		}
-	}
-	sort.Strings(scopes)
-	for _, k := range scopes {
-		if sub, ok := m[k].(map[string]any); ok {
-			for pk, pv := range reduceDeps(sub, osn, arch) {
-				out[pk] = pv
-			}
-		}
-	}
-	return out
-}
-
-// versionScopeKeyRE matches a dependency-map key that scopes its sub-map to the
-// package's OWN version (`">=9": {...}`) instead of naming a project or a
-// platform. The schema's depKey grammar admits only [A-Za-z0-9._+-] segments, so
-// a key carrying any of < > = ^ ~ * cannot be a project name. It is not a
-// first-character test: 26 upstream projects begin with `v`.
-var versionScopeKeyRE = regexp.MustCompile(`[<>=^~*]`)
-
-func isVersionScopeKey(k string) bool { return versionScopeKeyRE.MatchString(k) }
+//
+// The walk itself is ReduceDepKeys (depscope.go), which zpkb shares.
 
 // constraintText renders a version constraint the way the resolver reads it.
 //
@@ -2023,10 +1976,9 @@ func ResolveClosureFor(roots map[string]string, osn, arch string) ([]Resolved, e
 // collectConstraints walks the graph and gathers EVERY constraint on each
 // project, with who asked for it, before any version is chosen.
 //
-// Two passes are exact here because FetchMetaFor does not take a version: the
-// dependency graph does not depend on what gets picked, so nothing can change
-// once the walk is done. Resolving as it walked is what made the old version
-// keep the first constraint and drop the rest.
+// Collecting before choosing is what keeps every constraint: resolving as it
+// walked made the old version keep the first and drop the rest. (A version
+// scope makes the graph depend on the versions: see collectGraph.)
 //
 // The walk is DETERMINISTIC: roots and each project's dependencies are visited
 // in sorted order. Seeding the queue from a Go map meant the same closure
@@ -2044,7 +1996,38 @@ func collectConstraints(roots map[string]string, osn, arch string) (constraints 
 // by ^1 (x.org/exts), =1.8.11 (tcl-lang.org)" — and nothing could ask it. An
 // operator composing an environment needs the same answer BEFORE it fails:
 // which version was chosen, and which demand chose it.
+//
+// ⛔ THE GRAPH DEPENDS ON THE VERSIONS, because a recipe may scope a dependency
+// block to its own version (`">=9": {...}`, tcl-lang.org/tk). What a project
+// asks for therefore depends on which versions the closure leaves it, which
+// depends on what everyone asks. Two designs close that loop: pass the
+// constraints known at the moment a project is expanded, or re-walk until the
+// constraints stop changing. The first is order-dependent: tk expanded before
+// the demand that narrows it reads the wider range, and the answer depends on
+// the queue. This is the second: each pass reads a project's scopes against
+// the published versions satisfying what the PREVIOUS pass collected, and the
+// walk repeats until two passes agree. Pass 0 knows nothing, so it unions.
+// A closure that does not settle within maxScopePasses is refused, not
+// guessed. A recipe without a scope settles in one extra pass and lists no
+// versions.
 func collectGraph(roots map[string]string, osn, arch string) (constraints map[string][]string, askedBy map[string][]string, edges []Edge, order []string, err error) {
+	var prev map[string][]string
+	for pass := 0; pass < maxScopePasses; pass++ {
+		constraints, askedBy, edges, order, err = collectGraphGiven(roots, osn, arch, prev)
+		if err != nil {
+			return nil, nil, nil, nil, err
+		}
+		if prev != nil && sameConstraints(prev, constraints) {
+			return constraints, askedBy, edges, order, nil
+		}
+		prev = constraints
+	}
+	return nil, nil, nil, nil, fmt.Errorf("the closure of %s does not settle: version-scoped dependencies still changed after %d passes", strings.Join(sortedKeys(roots), ", "), maxScopePasses)
+}
+
+// collectGraphGiven is one walk, reading each project's version scopes against
+// `known`, the constraints a previous walk collected (nil: unknown, union).
+func collectGraphGiven(roots map[string]string, osn, arch string, known map[string][]string) (constraints map[string][]string, askedBy map[string][]string, edges []Edge, order []string, err error) {
 	constraints, askedBy = map[string][]string{}, map[string][]string{}
 	add := func(project, constraint, who string) {
 		if constraint == "" || constraint == "*" {
@@ -2072,7 +2055,7 @@ func collectGraph(roots map[string]string, osn, arch string) (constraints map[st
 		}
 		seen[project] = true
 		order = append(order, project)
-		deps, _, ferr := FetchMetaFor(project, osn, arch)
+		deps, ferr := fetchMetaGiven(project, osn, arch, known[project])
 		if ferr != nil {
 			return nil, nil, nil, nil, ferr
 		}
