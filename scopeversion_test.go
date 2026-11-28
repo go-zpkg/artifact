@@ -106,6 +106,20 @@ func TestScopeVerdictForCandidates(t *testing.T) {
 	}
 }
 
+func TestReduceDepsAtAVersion(t *testing.T) {
+	m := map[string]any{"a.org": "1", ">=9": map[string]any{"a.org": "9", "b.org": "*"}}
+	for _, c := range []struct {
+		ver  string
+		want string
+		n    int
+	}{{"8.1", "1", 1}, {"9.0.1", "9", 2}, {"", "9", 2}} {
+		got := ReduceDeps(m, "linux", "x86-64", c.ver)
+		if got["a.org"] != c.want || len(got) != c.n {
+			t.Errorf("version %q: %v, want a.org=%s and %d entries", c.ver, got, c.want, c.n)
+		}
+	}
+}
+
 func TestReduceDepKeysNestedPlatformInScopeAndOrder(t *testing.T) {
 	m := map[string]any{
 		"a.org":        "1",

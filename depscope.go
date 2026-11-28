@@ -147,6 +147,20 @@ func reduceDeps(m map[string]any, osn, arch string) map[string]string {
 	return reduceDepsFor(m, osn, arch, nil)
 }
 
+// ReduceDeps is the reduction this package applies to a recipe's dependencies,
+// for an explicit os/arch and the version of the package whose recipe it is
+// ("" or unparseable: unknown, scopes unioned). Exported so a caller with its
+// own platform grammar can be tested against it: zpkb's agreement test.
+func ReduceDeps(m map[string]any, osn, arch, pkgVersion string) map[string]string {
+	var cands []Ver
+	if pkgVersion != "" {
+		if v := ParseVer(pkgVersion); v.Raw != "" {
+			cands = []Ver{v}
+		}
+	}
+	return reduceDepsFor(m, osn, arch, cands)
+}
+
 func reduceDepsFor(m map[string]any, osn, arch string, candidates []Ver) map[string]string {
 	out := map[string]string{}
 	for k, v := range ReduceDepKeys(m, hostPlatformMatcher(osn, arch), candidates) {
