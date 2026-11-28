@@ -52,9 +52,6 @@ func IsVersionScopeKey(k string) bool { return versionScopeKeyRE.MatchString(k) 
 // A candidate whose version cannot be parsed is skipped, and a scope nobody can
 // evaluate applies: fail-open, as buildscript.matchGuard does.
 func ScopeApplies(key string, candidates []Ver) bool {
-	if len(candidates) == 0 {
-		return true
-	}
 	parsed := false
 	for _, v := range candidates {
 		if v.Raw == "" {
@@ -103,10 +100,7 @@ func ReduceDepKeys(m map[string]any, platform DepKeyMatcher, candidates []Ver) m
 	})
 	sort.Strings(scopes)
 	merge := func(v any) {
-		sub, ok := v.(map[string]any)
-		if !ok {
-			return
-		}
+		sub, _ := v.(map[string]any) // a block that is not a mapping adds nothing
 		for k, v := range ReduceDepKeys(sub, platform, candidates) {
 			out[k] = v
 		}
